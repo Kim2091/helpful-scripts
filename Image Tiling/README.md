@@ -1,7 +1,11 @@
-All of these scripts were created with ChatGPT and allow quick tiling of your images with multithreading. Put your images in an `images` folder, and it'll output the results in `output`. There are multiple options depending on what you need:
+This script was created with ChatGPT and allows quick tiling of your images with multithreading. Put your images in an `images` folder, and it'll output the results in `output`. 
 
-The `Image Tiling with Complex Removal` script removes any solid white or black tiles with a small margin of error. It will also remove any output tiles that are below the size of your specified tile size.
 
-The `Image Tiling with Tile Size Limit` script is the same as the one above, but it only removes tiles below the specified tile size. It will leave any solid black/white tiles.
+**Features:**
+* Split images into tiles of any size
+* Optional Grayscale output
+* Skip saving tiles based on their size
+* Skip saving tiles that are mostly black or white
 
-The `Image Tiling Script` is just a plain tiling script with no filters. From a quick test, it's about 2250% faster than magickutils.
+**Planned:**
+* Progress bar
