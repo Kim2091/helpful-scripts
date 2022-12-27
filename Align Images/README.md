@@ -6,5 +6,5 @@ Partially written by ChatGPT
 
 **Features:**
 * Transparency support
-* Affine and Projective transformations
+* Projective transformations using keypoints
 * Batch image handling
