@@ -4,7 +4,7 @@ This script handles basic image alignment. It looks at 2 folders, scans through 
 
 Partially written by ChatGPT
 
-Features:
-Transparency support
-Affine and Projective transformations
-Batch image handling
+**Features:**
+* Transparency support
+* Affine and Projective transformations
+* Batch image handling
