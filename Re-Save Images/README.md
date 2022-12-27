@@ -7,5 +7,5 @@ I asked ChatGPT to modify it and add additional functions such as:
 * Subfolder support
 * Exception handling
 * Progress bar
-* Commandlind Argument Support
+* Commandline Argument Support
 * Parallel Processing
