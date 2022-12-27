@@ -3,3 +3,8 @@ This script handles basic image alignment. It looks at 2 folders, scans through 
 `Kim Image Alignment Tool.py [-h] --folder1 FOLDER1 --folder2 FOLDER2 --output OUTPUT`
 
 Partially written by ChatGPT
+
+Features:
+Transparency support
+Affine and Projective transformations
+Batch image handling
