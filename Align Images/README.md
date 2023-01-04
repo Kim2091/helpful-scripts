@@ -8,3 +8,10 @@ Partially written by ChatGPT
 * Transparency support
 * Projective transformations using keypoints
 * Batch image handling
+
+**Required Packages**
+* opencv-python
+* numpy
+* argparse
+* time
+* logging
