@@ -1,6 +1,6 @@
 *Written by ChatGPT*
 
-This script allows quick tiling of your images with multithreading. Put your images in an `images` folder, and it'll output the results in `output`. 
+This script allows quick tiling of your images with multithreading. Put your images in an `images` folder, and it'll output the results in `output`. ~2000% faster than MagickUtils.
 
 **Features:**
 * Split images into tiles of any size
