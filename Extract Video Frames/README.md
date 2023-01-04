@@ -6,6 +6,7 @@ Features:
 * FPS Setting
 * Start and End frame settings
 * Output format option
+* Progress bar
 
 Usage:
 `python extract_frames.py [-h] [-f FPS] [-fmt FORMAT] [-s START] [-e END] input_video output_folder`
