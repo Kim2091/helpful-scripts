@@ -9,3 +9,8 @@ I asked ChatGPT to modify it and add additional functions such as:
 * Progress bar
 * Commandline Argument Support
 * Parallel Processing
+
+**Required Packages:**
+* argparse
+* opencv-python
+* tqdm
