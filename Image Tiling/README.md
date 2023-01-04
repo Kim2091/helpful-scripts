@@ -9,3 +9,7 @@ This script was created with ChatGPT and allows quick tiling of your images with
 
 **Planned:**
 * Progress bar
+
+**Required Packages:**
+* pillow
+* argparse
