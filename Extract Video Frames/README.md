@@ -1,6 +1,6 @@
 *Written by ChatGPT*
 
-This script extracts frames from a given input video and saves them as images in a specified output folder. 
+This script extracts frames from a given input video and saves them as images in a specified output folder. This was tested with videos in various formats, although it may not support more obscure formats or codecs.
 
 Features:
 * FPS Setting
