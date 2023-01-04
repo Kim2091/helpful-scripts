@@ -5,8 +5,8 @@ This script allows quick tiling of your images with multithreading. Put your ima
 **Features:**
 * Split images into tiles of any size
 * Optional Grayscale output
-* Skip saving tiles based on their size
-* Skip saving tiles that are mostly black or white
+* Option to skip saving tiles based on their size
+* Option to skip saving tiles that are mostly black or white
 
 **Planned:**
 * Progress bar
