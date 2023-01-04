@@ -1,6 +1,6 @@
 *Written by ChatGPT*
 
-This script extracts frames from a given input video and saves them as images in a specified output folder. This was tested with videos in various formats, although it may not support more obscure formats or codecs.
+This script extracts frames from a given input video and saves them as images in a specified output folder. This was tested with videos in various formats.
 
 Features:
 * FPS Setting
@@ -16,3 +16,7 @@ Usage:
     -fmt, --format: image format in which to save the frames. This argument is optional. If not specified, the frames will be saved as PNG images.
     -s, --start: start frame number. This argument is optional. If not specified, the extraction will start from the first frame.
     -e, --end: end frame number. This argument is optional. If not specified, the extraction will end at the last frame.
+
+**Requires these packages:**
+* opencv-python
+* tqdm
