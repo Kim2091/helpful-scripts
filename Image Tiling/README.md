@@ -1,5 +1,7 @@
 *Written by ChatGPT*
 
+**This script does NOT consider RAM usage. It will quickly max out your RAM if you let it. I'm in the process of fixing this**
+
 This script allows quick tiling of your images with multithreading. Put your images in an `images` folder, and it'll output the results in `output`. ~2000% faster than MagickUtils.
 
 **Features:**
