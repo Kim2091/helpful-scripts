@@ -1,5 +1,6 @@
 import time
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 import os
 import math
@@ -32,14 +33,14 @@ start_time = time.perf_counter()
 
 # Define a function that processes a single image
 def process_image(file):
-    
+
     # Load the image
     try:
         image = Image.open(os.path.join(args.folder, file))
     except OSError:
         print(f'Error: Could not open {file}. Skipping this image.')
         return
-    
+
     # Calculate the size of the image
     width = math.ceil(image.width / args.tile_size) * args.tile_size
     height = math.ceil(image.height / args.tile_size) * args.tile_size
@@ -58,6 +59,7 @@ def process_image(file):
             y1 = row * args.tile_size
             x2 = min(x1 + args.tile_size, image.width)  # Adjust the right edge of the tile if it goes beyond the width of the image
             y2 = min(y1 + args.tile_size, image.height)  # Adjust the bottom edge of the tile if it goes beyond the height of the image
+
             tile = image.crop((x1, y1, x2, y2))
             if tile.width < args.tile_size or tile.height < args.tile_size:
                 continue  # Skip this tile if it is smaller than the specified tile size
@@ -76,26 +78,13 @@ def process_image(file):
             # Skip this tile if it is smaller than the specified minimum tile size (if the min_tile_size flag is set)
             if args.min_tile_size and (tile.width < args.min_tile_size or tile.height < args.min_tile_size):
                 continue
-
+               
             output_file = f'tile_{row}_{col}_{os.path.basename(file_name)}.png'
             tile.save(os.path.join(output_dir, output_file))
 
-# Create a list of threads
-threads = []
 
-# Iterate through the list of files
-for file in file_list:
-    # Create a new thread and add it to the list
-    thread = threading.Thread(target=process_image, args=(file,))
-    threads.append(thread)
-
-# Start all the threads
-for thread in threads:
-    thread.start()
-
-# Wait for all the threads to complete
-for thread in threads:
-    thread.join()
+with ThreadPoolExecutor() as executor:
+    results = executor.map(process_image, file_list)
 
 # Stop the timer
 end_time = time.perf_counter()
