@@ -7,6 +7,10 @@ from random import randint, choice, shuffle
 from tqdm import tqdm
 from scipy import signal
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
 # Read config file
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -57,24 +61,6 @@ def apply_blur(image):
         ksize_x = 2 * int(4 * sigma_x + 0.5) + 1
         ksize_y = 2 * int(4 * sigma_y + 0.5) + 1
         image = cv2.GaussianBlur(image, (ksize_x, ksize_y), sigmaX=sigma_x, sigmaY=sigma_y)
-    elif algorithm == 'sinc':
-        # Apply a 2D sinc filter to each channel of the image
-        size = randint(*blur_range)
-        x = np.linspace(-size // 2, size // 2, size)
-        xx, yy = np.meshgrid(x, x)
-        kernel = np.sinc(xx) * np.sinc(yy)
-        kernel /= kernel.sum()
-        if len(image.shape) == 3:
-            # Split image into individual color channels
-            channels = list(cv2.split(image))
-            # Apply 2D sinc filter to each channel
-            for i in range(len(channels)):
-                channels[i] = signal.convolve2d(channels[i], kernel, mode='same', boundary='symm')
-            # Merge channels back together
-            image = cv2.merge(channels)
-        else:
-            # Apply 2D sinc filter to grayscale image
-            image = signal.convolve2d(image, kernel, mode='same', boundary='symm')
     return image
 
 def apply_noise(image):
@@ -130,38 +116,63 @@ def apply_compression(image):
         # Convert image to video format
         height, width, _ = image.shape
         codec = algorithm
-        container = 'mp4'
+        container = 'mpeg'
+        codec = algorithm
         if algorithm == 'mpeg':
             codec = 'mpeg1video'
-            container = 'mpeg'
         elif algorithm == 'mpeg2':
             codec = 'mpeg2video'
-            container = 'mpeg'
+        container = 'mpeg'
         
-        # Get CRF level from config
-        crf_level = config.getint('compression', 'crf_level')
+        # Get CRF level or bitrate from config
+        if algorithm in ['h264', 'h265']:
+            crf_level = config.getint('compression', 'crf_level')
+            output_args = {'crf': crf_level}
+        elif algorithm == 'mpeg':
+            bitrate = config.get('compression', 'mpegbitrate')
+            output_args = {'b': bitrate}
+        elif algorithm == 'mpeg2':
+            bitrate = config.get('compression', 'mpeg2bitrate')
+            output_args = {'b': bitrate}
+        else:
+            output_args = {}
         
-        process = (
+        # Print CRF level to verify it is being applied
+        print(f'outputarg: {output_args}')
+
+        # Encode image using ffmpeg
+        process1 = (
             ffmpeg
             .input('pipe:', format='rawvideo', pix_fmt='bgr24', s=f'{width}x{height}')
-            .output(f'temp.{container}', vcodec=codec, crf=crf_level)
-            .global_args('-loglevel', 'quiet')
-            .overwrite_output()
-            .run_async(pipe_stdin=True)
+            .output('pipe:', format=container, vcodec=codec, **output_args)
+            .global_args('-loglevel', 'error')
+            #.global_args('-movflags', 'frag_keyframe+empty_moov')
+            .global_args('-max_muxing_queue_size', '200000')
+            .run_async(pipe_stdin=True, pipe_stdout=True)
         )
-        process.stdin.write(image.tobytes())
-        process.stdin.close()
-        process.wait()
-
-        # Read compressed video back into image format
-        out, _ = (
+        process1.stdin.write(image.tobytes())
+        process1.stdin.close()
+        
+        # Decode compressed video back into image format using ffmpeg
+        process2 = (
             ffmpeg
-            .input(f'temp.{container}')
+            .input('pipe:', format=container)
             .output('pipe:', format='rawvideo', pix_fmt='bgr24')
-            .global_args('-loglevel', 'quiet')
-            .run(capture_stdout=True)
+            .global_args('-loglevel', 'error')
+            .run_async(pipe_stdin=True, pipe_stdout=True)
         )
-        #image = np.frombuffer(out, np.uint8).reshape([height, width, 3]).copy()
+        
+        out, err = process2.communicate(input=process1.stdout.read())
+        
+        process1.wait()
+        
+        try:
+            image = np.frombuffer(out, np.uint8).reshape([height, width, 3]).copy()
+        except ValueError as e:
+            logging.error(f'Error reshaping output from ffmpeg: {e}')
+            logging.error(f'Image dimensions: {width}x{height}')
+            logging.error(f'ffmpeg stderr output: {err}')
+            raise e
     return image
 
 def apply_scale(image):
