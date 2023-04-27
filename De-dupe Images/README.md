@@ -8,7 +8,7 @@ It checks for duplicates by matching each image's SHA256 hash against all other 
 duplicate if they match exactly. Also note that by default it moves duplicate images to another folder so you can verify the operation, but if you
 wish to delete them instead, then pass the `--delete` flag.
 
-`De-dupe Images.py [-h] --hr HR_OR_GT_FOLDER --lr LR_OR_LQ_FOLDER [--delete]`
+`ImageDeDupe.py [-h] --hr HR_OR_GT_FOLDER --lr LR_OR_LQ_FOLDER [--delete]`
 
 **Required Packages**
 * pillow
