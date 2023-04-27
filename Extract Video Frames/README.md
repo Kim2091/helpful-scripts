@@ -9,7 +9,7 @@ Features:
 * Progress bar
 
 Usage:
-`python extract_frames.py [-h] [-f FPS] [-fmt FORMAT] [-s START] [-e END] input_video output_folder`
+`python VideoFrameExtract.py [-h] [-f FPS] [-fmt FORMAT] [-s START] [-e END] input_video output_folder`
 
     input_video: path to the input video file from which the frames will be extracted.
     output_folder: path to the output folder where the extracted frames will be saved.
