@@ -16,7 +16,6 @@ Main features:
   - gaussian
   - isotropic
   - anisotropic
-  - sinc
 
 - Noise
   - uniform
