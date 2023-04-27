@@ -1,1 +1,1 @@
-This is just a collection of scripts written by myself or ChatGPT (or both of course). Hopefully they're of help to you!
+This is a collection of various scripts written with the assistance of AIs such as ChatGPT or Bing's GPT-4. Hopefully they're of help!
