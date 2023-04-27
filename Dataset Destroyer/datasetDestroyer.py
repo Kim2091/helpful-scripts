@@ -136,9 +136,6 @@ def apply_compression(image):
             output_args = {'b': bitrate}
         else:
             output_args = {}
-        
-        # Print CRF level to verify it is being applied
-        print(f'outputarg: {output_args}')
 
         # Encode image using ffmpeg
         process1 = (
