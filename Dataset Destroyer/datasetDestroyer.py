@@ -112,7 +112,7 @@ def apply_compression(image):
         encode_param = [int(cv2.IMWRITE_WEBP_QUALITY), quality]
         result, encimg = cv2.imencode('.webp', image, encode_param)
         image = cv2.imdecode(encimg, 1).copy()
-    elif algorithm in ['h264', 'h265', 'mpeg', 'mpeg2']:
+    elif algorithm in ['h264', 'hevc', 'mpeg', 'mpeg2']:
         # Convert image to video format
         height, width, _ = image.shape
         codec = algorithm
@@ -125,7 +125,7 @@ def apply_compression(image):
         container = 'mpeg'
         
         # Get CRF level or bitrate from config
-        if algorithm in ['h264', 'h265']:
+        if algorithm in ['h264', 'hevc']:
             crf_level = config.getint('compression', 'crf_level')
             output_args = {'crf': crf_level}
         elif algorithm == 'mpeg':
