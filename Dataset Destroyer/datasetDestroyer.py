@@ -125,7 +125,7 @@ def apply_compression(image):
         algorithm = choice(compression_algorithms)
     else:
         algorithm = compression_algorithms[0]
-    print(algorithm)
+
     # Apply compression with chosen algorithm
     if algorithm == 'jpeg':
         quality = randint(*jpeg_quality_range)
@@ -282,5 +282,4 @@ for subdir, dirs, files in os.walk(input_folder):
         image_paths.append(os.path.join(subdir, file))
 
 for image_path in tqdm(image_paths):
-    print(image_path)
     process_image(image_path)
