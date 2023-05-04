@@ -157,7 +157,7 @@ def apply_compression(image):
             output_args = {'crf': crf_level}
         elif algorithm == 'hevc':
             crf_level = randint(*hevc_crf_level_range)
-            output_args = {'crf': crf_level}
+            output_args = {'crf': crf_level, 'x265-params': 'log-level=0'}
         elif algorithm == 'mpeg':
             bitrate = config.get('compression', 'mpegbitrate')
             output_args = {'b': bitrate}
@@ -174,7 +174,7 @@ def apply_compression(image):
             .output('pipe:', format=container, vcodec=codec, **output_args)
             .global_args('-loglevel', 'error')
             # .global_args('-movflags', 'frag_keyframe+empty_moov')
-            .global_args('-max_muxing_queue_size', '200000')
+            .global_args('-max_muxing_queue_size', '300000')
             .run_async(pipe_stdin=True, pipe_stdout=True)
         )
         process1.stdin.write(image.tobytes())
@@ -195,7 +195,8 @@ def apply_compression(image):
 
         try:
             image = np.frombuffer(out, np.uint8).reshape([height, width, 3]).copy()
-            text = f"{algorithm} {output_args}"
+            first_arg = list(output_args.items())[0]
+            text = f"{algorithm} {first_arg[0]}={first_arg[1]}"
         except ValueError as e:
             logging.error(f'Error reshaping output from ffmpeg: {e}')
             logging.error(f'Image dimensions: {width}x{height}')
