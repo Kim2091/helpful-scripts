@@ -3,9 +3,9 @@
 This script's main usage is to generate datasets for your image models. 
 
 Main features:
-- The strength of each degradation is adjustable
-- Optional randomization of the strength
-- Optional randomization of degradation order
+- Adjustable degradations
+- Supports: Blur, noise, compression, and scaling
+- Randomization of strengths and order for every function
 - Video compression support through ffmpeg-python
 - Progress bar
 
