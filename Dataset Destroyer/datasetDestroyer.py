@@ -37,6 +37,8 @@ scale_algorithms = config.get('scale', 'algorithms').split(',')
 down_up_scale_algorithms = config.get('scale', 'down_up_algorithms').split(',')
 scale_randomize = config.getboolean('scale', 'randomize')
 scale_range = tuple(map(float, config.get('scale', 'range').split(',')))
+blur_scale_factor = config.getfloat('blur', 'scale_factor')
+noise_scale_factor = config.getfloat('noise', 'scale_factor')
 print_to_image = config.getboolean('main', 'print')
 
 
@@ -56,15 +58,20 @@ def apply_blur(image):
     # Apply blur with chosen algorithm
     if algorithm == 'average':
         ksize = randint(*blur_range)
+        ksize = int(ksize * blur_scale_factor)  # Scale down ksize by blur_scale_factor
+        ksize = ksize if ksize % 2 == 1 else ksize + 1  # Ensure ksize is an odd integer
         image = cv2.blur(image, (ksize, ksize))
         text = f"{algorithm} ksize={ksize}"
     elif algorithm == 'gaussian':
         ksize = randint(*blur_range) | 1
+        ksize = int(ksize * blur_scale_factor)  # Scale down ksize by blur_scale_factor
+        ksize = ksize if ksize % 2 == 1 else ksize + 1  # Ensure ksize is an odd integer
         image = cv2.GaussianBlur(image, (ksize, ksize), 0)
         text = f"{algorithm} ksize={ksize}"
     elif algorithm == 'isotropic':
         # Apply isotropic blur using a Gaussian filter with the same standard deviation in both the x and y directions
         sigma = randint(*blur_range)
+        sigma *= blur_scale_factor  # Scale down sigma by blur_scale_factor
         ksize = 2 * int(4 * sigma + 0.5) + 1
         image = cv2.GaussianBlur(image, (ksize, ksize), sigmaX=sigma, sigmaY=sigma)
         text = f"{algorithm} ksize={ksize} sigma={sigma}"
@@ -72,13 +79,14 @@ def apply_blur(image):
         # Apply anisotropic blur using a Gaussian filter with different standard deviations in the x and y directions
         sigma_x = randint(*blur_range)
         sigma_y = randint(*blur_range)
+        sigma_x *= blur_scale_factor  # Scale down sigma_x by blur_scale_factor
+        sigma_y *= blur_scale_factor  # Scale down sigma_y by blur_scale_factor
         ksize_x = 2 * int(4 * sigma_x + 0.5) + 1
         ksize_y = 2 * int(4 * sigma_y + 0.5) + 1
         image = cv2.GaussianBlur(image, (ksize_x, ksize_y), sigmaX=sigma_x, sigmaY=sigma_y)
         text = f"{algorithm} sigma_x={sigma_x} sigma_y={sigma_y} ksize_x={ksize_x} ksize_y={ksize_y}"
 
     return image, text
-
 
 def apply_noise(image):
     text = ''
@@ -91,11 +99,13 @@ def apply_noise(image):
     # Apply noise with chosen algorithm
     if algorithm == 'uniform':
         intensity = randint(*noise_range)
+        intensity *= noise_scale_factor  # Scale down intensity by noise_scale_factor
         noise = np.random.uniform(-intensity, intensity, image.shape)
         image = cv2.add(image, noise.astype(image.dtype))
         text = f"{algorithm} intensity={intensity}"
     elif algorithm == 'gaussian':
         intensity = randint(*noise_range)
+        intensity *= noise_scale_factor  # Scale down intensity by noise_scale_factor
         noise = np.random.normal(0, intensity, image.shape)
         image = cv2.add(image, noise.astype(image.dtype))
         text = f"{algorithm} intensity={intensity}"
@@ -116,7 +126,6 @@ def apply_noise(image):
         text = f"{algorithm} s={s}"
 
     return image, text
-
 
 def apply_compression(image):
     text = ''
