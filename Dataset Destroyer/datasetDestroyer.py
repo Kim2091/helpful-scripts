@@ -43,8 +43,15 @@ print_to_image = config.getboolean('main', 'print')
 
 
 def print_text_to_image(image, text, order):
-    return cv2.putText(image, f"{order}. {text}", (10, order * 50), cv2.FONT_HERSHEY_SIMPLEX, 1.25 * size_factor,
-                       (255, 0, 0), 2, cv2.LINE_AA)
+    h, w = image.shape[:2]
+    font_scale = w / 500
+    font_thickness = int(font_scale * 2)
+    text_size, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)
+    text_width, text_height = text_size
+    x = 10
+    y = int(order * text_height * 1.5) + 10
+    return cv2.putText(image, f"{order}. {text}", (x, y), cv2.FONT_HERSHEY_SIMPLEX, font_scale,
+                       (255, 0, 0), font_thickness, cv2.LINE_AA)
 
 
 def apply_blur(image):
