@@ -6,8 +6,8 @@ import ffmpeg
 from random import randint, choice, shuffle
 from tqdm import tqdm
 
+# Logging
 import logging
-
 logging.basicConfig(level=logging.DEBUG)
 
 # Read config file
@@ -40,11 +40,12 @@ scale_range = tuple(map(float, config.get('scale', 'range').split(',')))
 blur_scale_factor = config.getfloat('blur', 'scale_factor')
 noise_scale_factor = config.getfloat('noise', 'scale_factor')
 print_to_image = config.getboolean('main', 'print')
-
+print_to_textfile = config.getboolean('main', 'textfile')
+path_to_textfile = config.get('main', 'textfile_path')
 
 def print_text_to_image(image, text, order):
     h, w = image.shape[:2]
-    font_scale = w / 500
+    font_scale = w / 1200
     font_thickness = int(font_scale * 2)
     text_size, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)
     text_width, text_height = text_size
@@ -53,7 +54,19 @@ def print_text_to_image(image, text, order):
     return cv2.putText(image, f"{order}. {text}", (x, y), cv2.FONT_HERSHEY_SIMPLEX, font_scale,
                        (255, 0, 0), font_thickness, cv2.LINE_AA)
 
-
+# Append given text as a new line at the end of file (if file not exists it creates and inserts line, otherwise it just appends newline)               
+def print_text_to_textfile(file_name, text_to_append):
+    # Open the file in append & read mode ('a+')
+    with open(file_name, "a+") as file_object:
+        # Move read cursor to the start of file.
+        file_object.seek(0)
+        # If file is not empty then append '\n'
+        data = file_object.read(100)
+        if len(data) > 0:
+            file_object.write("\n")
+        # Append text at the end of file
+        file_object.write(text_to_append)
+        
 def apply_blur(image):
     text = ''
     # Choose blur algorithm
@@ -221,7 +234,6 @@ def apply_compression(image):
 
     return image, text
 
-
 def apply_scale(image):
     text = ''
     # Calculate new size
@@ -256,13 +268,16 @@ def apply_scale(image):
         image = cv2.resize(image, (new_w, new_h), interpolation=interpolation_map[algorithm2])
         if print_to_image:
             text = f"{algorithm} scale1factor={scale_factor:.2f} scale1algorithm={algorithm1} scale2factor={size_factor/scale_factor:.2f} scale2algorithm={algorithm2}"
+        if print_to_textfile:
+            text = f"{algorithm} scale1factor={scale_factor:.2f} scale1algorithm={algorithm1} scale2factor={size_factor/scale_factor:.2f} scale2algorithm={algorithm2}"
     else:
         image = cv2.resize(image, (new_w, new_h), interpolation=interpolation_map[algorithm])
         if print_to_image:
             text = f"{algorithm} size factor={size_factor}"
+        if print_to_textfile:
+            text = f"{algorithm} size factor={size_factor}"
 
     return image, text
-
 
 def process_image(image_path):
     image = cv2.imread(image_path)
@@ -280,7 +295,7 @@ def process_image(image_path):
             image, text = apply_compression(image)
         elif degradation == 'scale':
             image, text = apply_scale(image)
-        all_text.append(f"{degradation} {text}")
+        all_text.append(f"{degradation}: {text}")
 
     if print_to_image:
         for order, text in enumerate(all_text, 1):
@@ -291,6 +306,8 @@ def process_image(image_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     cv2.imwrite(output_path, image)
 
+    if print_to_textfile:
+        print_text_to_textfile(path_to_textfile + "/applied_degradations.txt",os.path.basename(output_path) + ' - ' + ', '.join(all_text))
 
 # Process images recursively
 image_paths = []
