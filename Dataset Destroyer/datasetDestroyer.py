@@ -124,11 +124,13 @@ def apply_noise(image):
         image = cv2.add(image, noise.astype(image.dtype))
         text = f"{algorithm} intensity={intensity}"
     elif algorithm == 'gaussian':
-        intensity = randint(*noise_range)
-        intensity *= noise_scale_factor  # Scale down intensity by noise_scale_factor
-        noise = np.random.normal(0, intensity, image.shape)
+        mean = 0
+        var = randint(*noise_range)
+        var *= noise_scale_factor # Scale down variance by noise_scale_factor
+        sigma = var**0.5
+        noise = np.random.normal(mean, sigma, image.shape)
         image = cv2.add(image, noise.astype(image.dtype))
-        text = f"{algorithm} intensity={intensity}"
+        text = f"{algorithm} variance={var}"
     elif algorithm == 'color':
         noise = np.zeros_like(image)
         m = (0, 0, 0)
