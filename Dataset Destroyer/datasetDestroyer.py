@@ -6,8 +6,8 @@ import ffmpeg
 from random import randint, choice, shuffle
 from tqdm import tqdm
 
+# Logging
 import logging
-
 logging.basicConfig(level=logging.DEBUG)
 
 # Read config file
@@ -37,14 +37,36 @@ scale_algorithms = config.get('scale', 'algorithms').split(',')
 down_up_scale_algorithms = config.get('scale', 'down_up_algorithms').split(',')
 scale_randomize = config.getboolean('scale', 'randomize')
 scale_range = tuple(map(float, config.get('scale', 'range').split(',')))
+blur_scale_factor = config.getfloat('blur', 'scale_factor')
+noise_scale_factor = config.getfloat('noise', 'scale_factor')
 print_to_image = config.getboolean('main', 'print')
-
+print_to_textfile = config.getboolean('main', 'textfile')
+path_to_textfile = config.get('main', 'textfile_path')
 
 def print_text_to_image(image, text, order):
-    return cv2.putText(image, f"{order}. {text}", (10, order * 50), cv2.FONT_HERSHEY_SIMPLEX, 1.25 * size_factor,
-                       (255, 0, 0), 2, cv2.LINE_AA)
+    h, w = image.shape[:2]
+    font_scale = w / 1200
+    font_thickness = int(font_scale * 2)
+    text_size, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)
+    text_width, text_height = text_size
+    x = 10
+    y = int(order * text_height * 1.5) + 10
+    return cv2.putText(image, f"{order}. {text}", (x, y), cv2.FONT_HERSHEY_SIMPLEX, font_scale,
+                       (255, 0, 0), font_thickness, cv2.LINE_AA)
 
-
+# Append given text as a new line at the end of file (if file not exists it creates and inserts line, otherwise it just appends newline)               
+def print_text_to_textfile(file_name, text_to_append):
+    # Open the file in append & read mode ('a+')
+    with open(file_name, "a+") as file_object:
+        # Move read cursor to the start of file.
+        file_object.seek(0)
+        # If file is not empty then append '\n'
+        data = file_object.read(100)
+        if len(data) > 0:
+            file_object.write("\n")
+        # Append text at the end of file
+        file_object.write(text_to_append)
+        
 def apply_blur(image):
     text = ''
     # Choose blur algorithm
@@ -56,15 +78,20 @@ def apply_blur(image):
     # Apply blur with chosen algorithm
     if algorithm == 'average':
         ksize = randint(*blur_range)
+        ksize = int(ksize * blur_scale_factor)  # Scale down ksize by blur_scale_factor
+        ksize = ksize if ksize % 2 == 1 else ksize + 1  # Ensure ksize is an odd integer
         image = cv2.blur(image, (ksize, ksize))
         text = f"{algorithm} ksize={ksize}"
     elif algorithm == 'gaussian':
         ksize = randint(*blur_range) | 1
+        ksize = int(ksize * blur_scale_factor)  # Scale down ksize by blur_scale_factor
+        ksize = ksize if ksize % 2 == 1 else ksize + 1  # Ensure ksize is an odd integer
         image = cv2.GaussianBlur(image, (ksize, ksize), 0)
         text = f"{algorithm} ksize={ksize}"
     elif algorithm == 'isotropic':
         # Apply isotropic blur using a Gaussian filter with the same standard deviation in both the x and y directions
         sigma = randint(*blur_range)
+        sigma *= blur_scale_factor  # Scale down sigma by blur_scale_factor
         ksize = 2 * int(4 * sigma + 0.5) + 1
         image = cv2.GaussianBlur(image, (ksize, ksize), sigmaX=sigma, sigmaY=sigma)
         text = f"{algorithm} ksize={ksize} sigma={sigma}"
@@ -72,13 +99,14 @@ def apply_blur(image):
         # Apply anisotropic blur using a Gaussian filter with different standard deviations in the x and y directions
         sigma_x = randint(*blur_range)
         sigma_y = randint(*blur_range)
+        sigma_x *= blur_scale_factor  # Scale down sigma_x by blur_scale_factor
+        sigma_y *= blur_scale_factor  # Scale down sigma_y by blur_scale_factor
         ksize_x = 2 * int(4 * sigma_x + 0.5) + 1
         ksize_y = 2 * int(4 * sigma_y + 0.5) + 1
         image = cv2.GaussianBlur(image, (ksize_x, ksize_y), sigmaX=sigma_x, sigmaY=sigma_y)
         text = f"{algorithm} sigma_x={sigma_x} sigma_y={sigma_y} ksize_x={ksize_x} ksize_y={ksize_y}"
 
     return image, text
-
 
 def apply_noise(image):
     text = ''
@@ -91,14 +119,18 @@ def apply_noise(image):
     # Apply noise with chosen algorithm
     if algorithm == 'uniform':
         intensity = randint(*noise_range)
+        intensity *= noise_scale_factor  # Scale down intensity by noise_scale_factor
         noise = np.random.uniform(-intensity, intensity, image.shape)
         image = cv2.add(image, noise.astype(image.dtype))
         text = f"{algorithm} intensity={intensity}"
     elif algorithm == 'gaussian':
-        intensity = randint(*noise_range)
-        noise = np.random.normal(0, intensity, image.shape)
+        mean = 0
+        var = randint(*noise_range)
+        var *= noise_scale_factor # Scale down variance by noise_scale_factor
+        sigma = var**0.5
+        noise = np.random.normal(mean, sigma, image.shape)
         image = cv2.add(image, noise.astype(image.dtype))
-        text = f"{algorithm} intensity={intensity}"
+        text = f"{algorithm} variance={var}"
     elif algorithm == 'color':
         noise = np.zeros_like(image)
         m = (0, 0, 0)
@@ -116,7 +148,6 @@ def apply_noise(image):
         text = f"{algorithm} s={s}"
 
     return image, text
-
 
 def apply_compression(image):
     text = ''
@@ -205,7 +236,6 @@ def apply_compression(image):
 
     return image, text
 
-
 def apply_scale(image):
     text = ''
     # Calculate new size
@@ -240,13 +270,16 @@ def apply_scale(image):
         image = cv2.resize(image, (new_w, new_h), interpolation=interpolation_map[algorithm2])
         if print_to_image:
             text = f"{algorithm} scale1factor={scale_factor:.2f} scale1algorithm={algorithm1} scale2factor={size_factor/scale_factor:.2f} scale2algorithm={algorithm2}"
+        if print_to_textfile:
+            text = f"{algorithm} scale1factor={scale_factor:.2f} scale1algorithm={algorithm1} scale2factor={size_factor/scale_factor:.2f} scale2algorithm={algorithm2}"
     else:
         image = cv2.resize(image, (new_w, new_h), interpolation=interpolation_map[algorithm])
         if print_to_image:
             text = f"{algorithm} size factor={size_factor}"
+        if print_to_textfile:
+            text = f"{algorithm} size factor={size_factor}"
 
     return image, text
-
 
 def process_image(image_path):
     image = cv2.imread(image_path)
@@ -264,7 +297,7 @@ def process_image(image_path):
             image, text = apply_compression(image)
         elif degradation == 'scale':
             image, text = apply_scale(image)
-        all_text.append(f"{degradation} {text}")
+        all_text.append(f"{degradation}: {text}")
 
     if print_to_image:
         for order, text in enumerate(all_text, 1):
@@ -275,6 +308,8 @@ def process_image(image_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     cv2.imwrite(output_path, image)
 
+    if print_to_textfile:
+        print_text_to_textfile(path_to_textfile + "/applied_degradations.txt",os.path.basename(output_path) + ' - ' + ', '.join(all_text))
 
 # Process images recursively
 image_paths = []
