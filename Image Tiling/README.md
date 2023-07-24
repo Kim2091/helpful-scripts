@@ -1,4 +1,4 @@
-*Written by ChatGPT*
+*Written with the assistance of Bing*
 
 This script allows quick tiling of your images with multithreading. Just provide and input and output folder. ~2000% faster than MagickUtils.
 
