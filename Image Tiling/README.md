@@ -1,25 +1,24 @@
 *Written by ChatGPT*
 
-This script allows quick tiling of your images with multithreading. Put your images in an `images` folder, and it'll output the results in `output`. ~2000% faster than MagickUtils.
+This script allows quick tiling of your images with multithreading. Just provide and input and output folder. ~2000% faster than MagickUtils.
 
 **Features:**
-* Split images into tiles of any size
-* Optional Grayscale output
-* Option to skip saving tiles based on their size
-* Option to skip saving tiles that are mostly black or white
 
-**Planned:**
-* Progress bar
+* Split images into tiles of any size
+* Generate a specified number of tiles per image or generate as many non-overlapping tiles as possible
+* Convert tiles to grayscale
+* Skip black and white tiles
+* Enforce a minimum size for the tiles
 
 **Required Packages:**
+
 * pillow
-* argparse
 
-`python TileImages.py /path/to/image/folder --tile-size 512 --color-type g --skip-tiles --min-tile-size 256 /path/to/output/folder`
+How to use: `python TileImages.py /path/to/image/folder /path/to/output/folder`
 
-    /path/to/image/folder: This is the path to the folder containing the images to be tiled. All subfolders will be searched recursively.
-    --tile-size 512: This specifies the size of the tiles in pixels. The default value is 512. Tiles will be square.
-    --color-type g: This specifies that the output tiles should be grayscale. Use "g" for grayscale or "c" for color. The default is color.
-    --skip-tiles: This flag causes the script to skip tiles that are predominantly black or white. A tile is considered predominantly black or white if its average pixel value is less than 5 or greater than 250, respectively.
-    --min-tile-size 256: This flag limits the size of the tiles to a minimum value in pixels. Any tiles smaller than this size will be skipped. For example, if the tile size is 512 and the minimum tile size is 256, any tiles that are 256x256 or smaller will be skipped.
-    /path/to/output/folder: This is the path to the output directory where the tiled images will be saved. The directory will be created if it does not already exist.
+**Additional Arguments:**
+* `-t` -  Specify the size of the tiles to take from the image. Use like so: `-t 512 512`
+* `-n` - The number of tiles to save per image. This will take a set amount of tiles from each image, pulled from random locations. This helps with increasing variety in your dataset without saving unnecessary tiles
+* `-g` - Saves your images in grayscale
+* `-m` - Sets a minimum size for tiles. If any tiles are below the specified size, they will not be saved
+* `-s` - The script will not save tiles that are predominantly black or white.
