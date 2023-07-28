@@ -3,6 +3,7 @@ import argparse
 from PIL import Image
 from multiprocessing import Pool
 import random
+import numpy as np
 
 def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, min_size, skip_black_white):
     try:
@@ -10,12 +11,21 @@ def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, mi
         width, height = image.size
         if grayscale:
             image = image.convert('L')
+        tiles_per_row = width // tile_size[0]
+        tiles_per_col = height // tile_size[1]
         if num_tiles == 0:
-            num_tiles = (width // tile_size[0]) * (height // tile_size[1])
+            num_tiles = tiles_per_row * tiles_per_col
         tiles_saved = 0
-        for i in range(num_tiles):
-            x = random.randint(0, width - tile_size[0])
-            y = random.randint(0, height - tile_size[1])
+        tile_indices = np.arange(tiles_per_row * tiles_per_col)
+        rng = np.random.default_rng()
+        rng.shuffle(tile_indices)
+        for i in tile_indices:
+            if tiles_saved >= num_tiles:
+                break
+            row = i // tiles_per_row
+            col = i % tiles_per_row
+            x = col * tile_size[0]
+            y = row * tile_size[1]
             tile = image.crop((x, y, x + tile_size[0], y + tile_size[1]))
             if min_size and (tile.width < min_size[0] or tile.height < min_size[1]):
                 continue
@@ -29,13 +39,12 @@ def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, mi
                     is_white = extrema[1] == 255
                 if is_black or is_white:
                     continue
-            output_path = f"{output_folder}/{os.path.basename(image_path)}_{i}.png"
+            output_path = f"{output_folder}/{os.path.basename(image_path)}_{row}_{col}.png"
             tile.save(output_path)
             tiles_saved += 1
         print(f"{tiles_saved} tiles saved from {image_path}")
     except Exception as e:
         print(f"Error processing {image_path}: {e}")
-
 
 
 def process_folder(input_folder, output_folder, tile_size, num_tiles, grayscale, min_size, skip_black_white):
