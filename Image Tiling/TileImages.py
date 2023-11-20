@@ -49,7 +49,10 @@ def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, mi
             output_path = f"{output_folder}/{os.path.basename(image_path)}_{row}_{col}.png"
             tile.save(output_path)
             tiles_saved += 1
-        print(f"{tiles_saved} tiles saved and {tiles_skipped} tiles skipped due to low edge content from {image_path}")
+        if edge_threshold:
+            print(f"{tiles_saved} tiles saved and {tiles_skipped} tiles skipped due to low edge content from {image_path}")
+        else:
+            print(f"{tiles_saved} tiles saved from {image_path}")
     except Exception as e:
         print(f"Error processing {image_path}: {e}")
 
