@@ -43,7 +43,6 @@ def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, mi
             if np.sum(edges) < edge_threshold:  # If the sum of the edge intensities is below the threshold
                 tiles_skipped += 1
                 continue
-            tiles_saved += 1
             if min_size and (tile.width < min_size[0] or tile.height < min_size[1]):
                 continue
             output_path = f"{output_folder}/{os.path.basename(image_path)}_{row}_{col}.png"
