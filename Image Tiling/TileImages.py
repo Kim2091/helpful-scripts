@@ -2,10 +2,10 @@ import os
 import argparse
 from PIL import Image
 from multiprocessing import Pool
-import random
 import numpy as np
+from skimage import color, filters
 
-def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, min_size, skip_black_white):
+def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, min_size, edge_threshold=None):
     try:
         image = Image.open(image_path)
         width, height = image.size
@@ -16,38 +16,46 @@ def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, mi
         if num_tiles == 0:
             num_tiles = tiles_per_row * tiles_per_col
         tiles_saved = 0
+        tiles_skipped = 0
         tile_indices = np.arange(tiles_per_row * tiles_per_col)
         rng = np.random.default_rng()
         rng.shuffle(tile_indices)
-        for i in tile_indices:
+        
+        # Calculate the edge threshold for the entire image if not specified
+        if edge_threshold:
+            image_rgb = np.array(image)[..., :3]  # Discard the alpha channel if it exists
+            image_gray = color.rgb2gray(image_rgb)  # Convert the RGB image to grayscale
+            edges = filters.sobel(image_gray)  # Apply the Sobel operator
+            edge_threshold = np.sum(edges) * 0.01  # Set the threshold to 1% of the total edge intensity
+        
+        for i in range(tiles_per_row * tiles_per_col):
             if tiles_saved >= num_tiles:
                 break
-            row = i // tiles_per_row
-            col = i % tiles_per_row
+            idx = tile_indices[i]
+            row = idx // tiles_per_row
+            col = idx % tiles_per_row
             x = col * tile_size[0]
             y = row * tile_size[1]
             tile = image.crop((x, y, x + tile_size[0], y + tile_size[1]))
+            tile_rgb = np.array(tile)[..., :3]  # Discard the alpha channel if it exists
+            tile_gray = color.rgb2gray(tile_rgb)  # Convert the RGB image to grayscale
+            edges = filters.sobel(tile_gray)  # Apply the Sobel operator
+            if np.sum(edges) < edge_threshold:  # If the sum of the edge intensities is below the threshold
+                tiles_skipped += 1
+                continue
             if min_size and (tile.width < min_size[0] or tile.height < min_size[1]):
                 continue
-            if skip_black_white:
-                extrema = tile.getextrema()
-                if isinstance(extrema[0], tuple):
-                    is_black = all([x == 0 for x in extrema[0]])
-                    is_white = all([x == 255 for x in extrema[1]])
-                else:
-                    is_black = extrema[0] == 0
-                    is_white = extrema[1] == 255
-                if is_black or is_white:
-                    continue
             output_path = f"{output_folder}/{os.path.basename(image_path)}_{row}_{col}.png"
             tile.save(output_path)
             tiles_saved += 1
-        print(f"{tiles_saved} tiles saved from {image_path}")
+        if edge_threshold:
+            print(f"{tiles_saved} tiles saved and {tiles_skipped} tiles skipped due to low edge content from {image_path}")
+        else:
+            print(f"{tiles_saved} tiles saved from {image_path}")
     except Exception as e:
         print(f"Error processing {image_path}: {e}")
 
-
-def process_folder(input_folder, output_folder, tile_size, num_tiles, grayscale, min_size, skip_black_white):
+def process_folder(input_folder, output_folder, tile_size, num_tiles, grayscale, min_size, std_dev_threshold):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     pool = Pool()
@@ -55,7 +63,7 @@ def process_folder(input_folder, output_folder, tile_size, num_tiles, grayscale,
         for file in files:
             if file.endswith(('.png', '.jpg', '.webp')):
                 image_path = os.path.join(root, file)
-                pool.apply_async(process_image, (image_path, output_folder, tile_size, num_tiles, grayscale, min_size, skip_black_white))
+                pool.apply_async(process_image, (image_path, output_folder, tile_size, num_tiles, grayscale, min_size, std_dev_threshold))
     pool.close()
     pool.join()
 
@@ -73,10 +81,10 @@ if __name__ == '__main__':
                         help='Convert tiles to grayscale')
     parser.add_argument('-m', '--min-size', type=int, nargs=2,
                         help='Minimum size of tiles to save (width height)')
-    parser.add_argument('-s', '--skip-black-white', action='store_true',
-                        help='Skip black and white tiles')
+    parser.add_argument('-e', '--edge-threshold', action='store_true',
+                        help='Enable edge intensity threshold for skipping tiles with low content.')
     args = parser.parse_args()
     process_folder(args.input_folder, args.output_folder,
                    args.tile_size, args.num_tiles,
                    args.grayscale, args.min_size,
-                   args.skip_black_white)
+                   args.edge_threshold)

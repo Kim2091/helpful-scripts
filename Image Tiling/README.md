@@ -21,4 +21,4 @@ How to use: `python TileImages.py /path/to/image/folder /path/to/output/folder`
 * `-n` - The number of tiles to save per image. This will take a set amount of tiles from each image, pulled from random locations. This helps with increasing variety in your dataset without saving unnecessary tiles
 * `-g` - Saves your images in grayscale
 * `-m` - Sets a minimum size for tiles. If any tiles are below the specified size, they will not be saved
-* `-s` - The script will not save tiles that are predominantly black or white.
+* `-e` - Skip tiles based on edge intensity threshold calculated with Sobel edge detection. Allows you to skip tiles if they contain little valid content. Easily triggered by noise however.
