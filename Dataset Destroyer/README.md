@@ -6,8 +6,8 @@ Note: Avoid running all degradations at once in combination with ffmpeg options 
 
 Main features:
 - Adjustable degradations
-- Supports: Blur, noise, compression, and scaling
-- Randomization of strengths and order for every function
+- Supports: Blur, noise, compression, scaling, quantization, and unsharp mask
+- Adjustable strengths and order for every degradation, with a randomization option
 - Video compression support through ffmpeg-python
 - Progress bar
   
