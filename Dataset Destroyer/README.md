@@ -1,4 +1,4 @@
-*Written with the help of Bing's GPT-4 chat*
+*Written with the help of multiple AI assistants*
 
 This script's main usage is to generate datasets for your image models. 
 
@@ -12,16 +12,26 @@ Main features:
 <details><summary>Supported filters:</summary>
 
 - Blur
-  - average
-  - gaussian
-  - isotropic
-  - anisotropic
+  - Average
+  - Gaussian
+  - Isotropic
+  - Anisotropic
 
 - Noise
-  - uniform
-  - gaussian
-  - color
-  - gray
+  - Uniform
+  - Gaussian
+  - Color
+  - Gray
+
+- Quantization
+  - Floyd-Steinberg
+  - Jarvis-Judice-Ninke
+  - Stucki
+  - Atkinson
+  - Burkes
+  - Sierra
+  - Two-Row Sierra
+  - Sierra Lite
 
 - Compression
   - H264
@@ -45,11 +55,3 @@ Usage:
 - Edit config.ini to your liking. Make sure to add file paths! Comments within the file describe each function
 - Run the .py file with python
 - Enjoy!
-
-This script requires the following libraries:
-- cv2 (OpenCV)
-- numpy
-- ffmpeg-python
-- scipy
-- tqdm
-- configparser
