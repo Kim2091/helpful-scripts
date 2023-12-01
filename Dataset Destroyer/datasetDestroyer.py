@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import ffmpeg
 from random import randint, choice, shuffle
+import concurrent.futures
 from tqdm import tqdm
 
 # Logging
@@ -122,6 +123,7 @@ def apply_noise(image):
         intensity *= noise_scale_factor  # Scale down intensity by noise_scale_factor
         noise = np.random.uniform(-intensity, intensity, image.shape)
         image = cv2.add(image, noise.astype(image.dtype))
+        image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
         text = f"{algorithm} intensity={intensity}"
     elif algorithm == 'gaussian':
         mean = 0
@@ -130,21 +132,24 @@ def apply_noise(image):
         sigma = var**0.5
         noise = np.random.normal(mean, sigma, image.shape)
         image = cv2.add(image, noise.astype(image.dtype))
+        image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
         text = f"{algorithm} variance={var}"
     elif algorithm == 'color':
-        noise = np.zeros_like(image)
+        noise = np.zeros_like(image, dtype=np.float32)  # Ensure noise is of type float32
         m = (0, 0, 0)
         s = (randint(*noise_range), randint(*noise_range), randint(*noise_range))
         cv2.randn(noise, m, s)
-        image += noise
+        image = cv2.add(image, noise.astype(np.uint8))
+        image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
         text = f"{algorithm} s={s}"
     elif algorithm == 'gray':
-        gray_noise = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
+        gray_noise = np.zeros((image.shape[0], image.shape[1]), dtype=np.float32)  # Ensure gray_noise is of type float32
         m = (0,)
         s = (randint(*noise_range),)
         cv2.randn(gray_noise, m, s)
-        gray_noise = gray_noise[..., None]
-        image += gray_noise
+        for i in range(image.shape[2]):  # Add noise to each channel separately
+            noisy_image = cv2.add(image[..., i], gray_noise.astype(np.uint8))
+            image[..., i] = np.clip(noisy_image, 0, 255)  # Clip values to 8-bit range
         text = f"{algorithm} s={s}"
 
     return image, text
@@ -196,7 +201,7 @@ def apply_compression(image):
             bitrate = config.get('compression', 'mpeg2bitrate')
             output_args = {'b': bitrate}
         else:
-            output_args = {}
+            raise ValueError(f"Unknown algorithm: {algorithm}")
 
         # Encode image using ffmpeg
         process1 = (
@@ -204,13 +209,16 @@ def apply_compression(image):
             .input('pipe:', format='rawvideo', pix_fmt='bgr24', s=f'{width}x{height}')
             .output('pipe:', format=container, vcodec=codec, **output_args)
             .global_args('-loglevel', 'error')
-            # .global_args('-movflags', 'frag_keyframe+empty_moov')
             .global_args('-max_muxing_queue_size', '300000')
             .run_async(pipe_stdin=True, pipe_stdout=True)
         )
         process1.stdin.write(image.tobytes())
+        process1.stdin.flush()  # Ensure all data is written
         process1.stdin.close()
 
+        # Add a delay between each image
+        time.sleep(0.1)
+        
         # Decode compressed video back into image format using ffmpeg
         process2 = (
             ffmpeg
@@ -283,7 +291,10 @@ def apply_scale(image):
 
 def process_image(image_path):
     image = cv2.imread(image_path)
-
+    if image is None:
+        print(f"Failed to load image at {image_path}")
+        return
+    
     degradation_order = degradations.copy()
     all_text = []
     if degradations_randomize:
@@ -298,13 +309,15 @@ def process_image(image_path):
         elif degradation == 'scale':
             image, text = apply_scale(image)
         all_text.append(f"{degradation}: {text}")
-
     if print_to_image:
         for order, text in enumerate(all_text, 1):
             image = print_text_to_image(image, text, order)
 
+    # Save image
     output_path = os.path.join(output_folder, os.path.relpath(image_path, input_folder))
     output_path = os.path.splitext(output_path)[0] + '.' + output_format
+    
+    # Create output folder if it doesn't exist
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     cv2.imwrite(output_path, image)
 
@@ -317,5 +330,20 @@ for subdir, dirs, files in os.walk(input_folder):
     for file in files:
         image_paths.append(os.path.join(subdir, file))
 
-for image_path in tqdm(image_paths):
-    process_image(image_path)
+if __name__ == "__main__":
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(process_image, image_path) for image_path in image_paths}
+        kwargs = {
+            'total': len(futures),
+            'unit': 'it',
+            'unit_scale': True,
+            'leave': True
+        }
+        try:
+            for f in tqdm(concurrent.futures.as_completed(futures), **kwargs):
+                pass
+        except KeyboardInterrupt:
+            print("Interrupted by user, terminating processes...")
+            executor.shutdown(wait=False)
+            for future in futures:
+                future.cancel()
