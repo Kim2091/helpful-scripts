@@ -2,7 +2,7 @@
 
 This script's main usage is to generate datasets for your image models. 
 
-Note: Currently there is an issue where using too many degradations at once can result in ffmpeg errors
+Note: Avoid running all degradations at once in combination with ffmpeg options (mpeg, mpeg2, h264, hevc, vp9). It will likely cause errors
 
 Main features:
 - Adjustable degradations
@@ -25,6 +25,8 @@ Main features:
   - Gaussian
   - Color
   - Gray
+  - ISO
+  - Salt and Pepper
 
 - Quantization
   - Floyd-Steinberg
