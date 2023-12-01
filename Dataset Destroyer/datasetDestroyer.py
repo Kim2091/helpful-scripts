@@ -6,6 +6,8 @@ import ffmpeg
 from random import randint, choice, shuffle
 import concurrent.futures
 from tqdm import tqdm
+from PIL import Image
+from chainner_ext import DiffusionAlgorithm, UniformQuantization, error_diffusion_dither
 
 # Logging
 import logging
@@ -43,6 +45,11 @@ noise_scale_factor = config.getfloat('noise', 'scale_factor')
 print_to_image = config.getboolean('main', 'print')
 print_to_textfile = config.getboolean('main', 'textfile')
 path_to_textfile = config.get('main', 'textfile_path')
+
+# Add config values for quantization
+quantization_algorithms = config.get('quantization', 'algorithms').split(',')
+quantization_randomize = config.getboolean('quantization', 'randomize')
+quantization_range = tuple(map(int, config.get('quantization', 'range').split(',')))
 
 def print_text_to_image(image, text, order):
     h, w = image.shape[:2]
@@ -151,6 +158,53 @@ def apply_noise(image):
             noisy_image = cv2.add(image[..., i], gray_noise.astype(np.uint8))
             image[..., i] = np.clip(noisy_image, 0, 255)  # Clip values to 8-bit range
         text = f"{algorithm} s={s}"
+
+    return image, text
+
+def apply_quantization(image):
+    text = ''
+    # Choose quantization algorithm
+    if quantization_randomize:
+        algorithm = choice(quantization_algorithms)
+    else:
+        algorithm = quantization_algorithms[0]
+
+    # Map string algorithm names to DiffusionAlgorithm enum values
+    algorithm_mapping = {
+        'floyd_steinberg': DiffusionAlgorithm.FloydSteinberg,
+        'jarvis_judice_ninke': DiffusionAlgorithm.JarvisJudiceNinke,
+        'stucki': DiffusionAlgorithm.Stucki,
+        'atkinson': DiffusionAlgorithm.Atkinson,
+        'burkes': DiffusionAlgorithm.Burkes,
+        'sierra': DiffusionAlgorithm.Sierra,
+        'two_row_sierra': DiffusionAlgorithm.TwoRowSierra,
+        'sierra_lite': DiffusionAlgorithm.SierraLite,
+    }
+
+    # Apply quantization with chosen algorithm
+    if algorithm in algorithm_mapping:
+        colors_per_channel = randint(*quantization_range)
+        quant = UniformQuantization(colors_per_channel=colors_per_channel)
+        image_np = np.array(image).astype(np.float32) / 255.0
+
+        # Apply the chosen dithering algorithm to each color channel separately
+        for i in range(image_np.shape[2]):
+            dithered_channel = error_diffusion_dither(image_np[..., i], quant, algorithm_mapping[algorithm])
+            # Reshape the output to (height, width) if necessary
+            if len(dithered_channel.shape) == 3:
+                dithered_channel = dithered_channel.squeeze(-1)
+            image_np[..., i] = dithered_channel
+
+        # Convert the numpy array back to an image
+        dithered_image_np = (image_np * 255).astype(np.uint8)
+        image = Image.fromarray(dithered_image_np)
+
+        text = f"{algorithm} colors_per_channel={colors_per_channel}"
+    else:
+        raise ValueError(f"Unsupported quantization algorithm: {algorithm}")
+
+    # Convert the image back to a numpy array before returning
+    image = np.array(image)
 
     return image, text
 
@@ -308,6 +362,8 @@ def process_image(image_path):
             image, text = apply_compression(image)
         elif degradation == 'scale':
             image, text = apply_scale(image)
+        elif degradation == 'quantization':
+            image, text = apply_quantization(image)
         all_text.append(f"{degradation}: {text}")
     if print_to_image:
         for order, text in enumerate(all_text, 1):
@@ -320,10 +376,10 @@ def process_image(image_path):
     # Create output folder if it doesn't exist
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     cv2.imwrite(output_path, image)
+    
 
     if print_to_textfile:
         print_text_to_textfile(path_to_textfile + "/applied_degradations.txt",os.path.basename(output_path) + ' - ' + ', '.join(all_text))
-
 # Process images recursively
 image_paths = []
 for subdir, dirs, files in os.walk(input_folder):
@@ -331,19 +387,9 @@ for subdir, dirs, files in os.walk(input_folder):
         image_paths.append(os.path.join(subdir, file))
 
 if __name__ == "__main__":
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        futures = {executor.submit(process_image, image_path) for image_path in image_paths}
-        kwargs = {
-            'total': len(futures),
-            'unit': 'it',
-            'unit_scale': True,
-            'leave': True
-        }
-        try:
-            for f in tqdm(concurrent.futures.as_completed(futures), **kwargs):
-                pass
-        except KeyboardInterrupt:
-            print("Interrupted by user, terminating processes...")
-            executor.shutdown(wait=False)
-            for future in futures:
-                future.cancel()
+    try:
+        for i, image_path in enumerate(image_paths):
+            process_image(image_path)
+            print(f"Processed {i+1}/{len(image_paths)} images")
+    except KeyboardInterrupt:
+        print("Interrupted by user, terminating processes...")
