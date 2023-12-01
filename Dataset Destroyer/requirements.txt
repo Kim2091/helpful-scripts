@@ -1,6 +1,7 @@
+configparser
 opencv-python
 numpy
 ffmpeg-python
-pillow
 tqdm
+pillow
 chainner_ext
