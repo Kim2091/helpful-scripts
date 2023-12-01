@@ -36,6 +36,7 @@ Main features:
 - Compression
   - H264
   - HEVC
+  - VP9
   - MPEG
   - MPEG-2
   - JPEG
