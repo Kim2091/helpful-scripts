@@ -307,7 +307,7 @@ def apply_compression(image):
             codec = 'libvpx-vp9'
             container = 'webm'
             crf_level = randint(*vp9_crf_level_range)
-            output_args = {'crf': str(crf_level), 'b:v': '0', 'deadline': 'realtime', 'cpu-used': '5'}
+            output_args = {'crf': str(crf_level), 'b:v': '0', 'cpu-used': '5'}
 
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
