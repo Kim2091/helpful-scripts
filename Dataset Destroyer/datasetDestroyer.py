@@ -1,6 +1,7 @@
 import configparser
 import os
 import cv2
+import time
 import numpy as np
 import ffmpeg
 from random import randint, choice, shuffle
@@ -262,7 +263,7 @@ def apply_compression(image):
             ffmpeg
             .input('pipe:', format='rawvideo', pix_fmt='bgr24', s=f'{width}x{height}')
             .output('pipe:', format=container, vcodec=codec, **output_args)
-            .global_args('-loglevel', 'error')
+            .global_args('-loglevel', 'fatal') # Disable error reporting because of buffer errors
             .global_args('-max_muxing_queue_size', '300000')
             .run_async(pipe_stdin=True, pipe_stdout=True)
         )
@@ -270,15 +271,15 @@ def apply_compression(image):
         process1.stdin.flush()  # Ensure all data is written
         process1.stdin.close()
 
-        # Add a delay between each image
-        time.sleep(0.1)
+        # Add a delay between each image to help resolve buffer errors
+        time.sleep(0.1) 
         
         # Decode compressed video back into image format using ffmpeg
         process2 = (
             ffmpeg
             .input('pipe:', format=container)
             .output('pipe:', format='rawvideo', pix_fmt='bgr24')
-            .global_args('-loglevel', 'error')
+            .global_args('-loglevel', 'fatal') # Disable error reporting because of buffer errors
             .run_async(pipe_stdin=True, pipe_stdout=True)
         )
 
@@ -387,9 +388,24 @@ for subdir, dirs, files in os.walk(input_folder):
         image_paths.append(os.path.join(subdir, file))
 
 if __name__ == "__main__":
-    try:
-        for i, image_path in enumerate(image_paths):
-            process_image(image_path)
-            print(f"Processed {i+1}/{len(image_paths)} images")
-    except KeyboardInterrupt:
-        print("Interrupted by user, terminating processes...")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(process_image, image_path) for image_path in image_paths}
+        kwargs = {
+            'total': len(futures),
+            'unit': 'it',
+            'unit_scale': True,
+            'leave': True
+        }
+        try:
+            for f in tqdm(concurrent.futures.as_completed(futures), **kwargs):
+                # Disable this block and replace with "pass" to hide exceptions
+                try:
+                    f.result()  # This will raise the exception if one was thrown
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+
+        except KeyboardInterrupt:
+            print("Interrupted by user, terminating processes...")
+            executor.shutdown(wait=False)
+            for future in futures:
+                future.cancel()
