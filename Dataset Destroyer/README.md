@@ -2,12 +2,15 @@
 
 This script's main usage is to generate datasets for your image models. 
 
+Note: Currently there is an issue where using too many degradations at once can result in ffmpeg errors
+
 Main features:
 - Adjustable degradations
 - Supports: Blur, noise, compression, and scaling
 - Randomization of strengths and order for every function
 - Video compression support through ffmpeg-python
 - Progress bar
+  
 
 <details><summary>Supported filters:</summary>
 
