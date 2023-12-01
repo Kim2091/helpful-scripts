@@ -30,6 +30,9 @@ blur_range = tuple(map(int, config.get('blur', 'range').split(',')))
 noise_algorithms = config.get('noise', 'algorithms').split(',')
 noise_randomize = config.getboolean('noise', 'randomize')
 noise_range = tuple(map(int, config.get('noise', 'range').split(',')))
+noise_scale_factor = config.getfloat('noise', 'scale_factor')
+sp_noise_range = tuple(map(int, config.get('noise', 'sp_range').split(',')))  # Salt and pepper noise range
+sp_noise_scale_factor = config.getfloat('noise', 'sp_scale_factor')  # Salt and pepper noise scale factor
 compression_algorithms = config.get('compression', 'algorithms').split(',')
 compression_randomize = config.getboolean('compression', 'randomize')
 jpeg_quality_range = tuple(map(int, config.get('compression', 'jpeg_quality_range').split(',')))
@@ -45,7 +48,6 @@ down_up_scale_algorithms = config.get('scale', 'down_up_algorithms').split(',')
 scale_randomize = config.getboolean('scale', 'randomize')
 scale_range = tuple(map(float, config.get('scale', 'range').split(',')))
 blur_scale_factor = config.getfloat('blur', 'scale_factor')
-noise_scale_factor = config.getfloat('noise', 'scale_factor')
 print_to_image = config.getboolean('main', 'print')
 print_to_textfile = config.getboolean('main', 'textfile')
 path_to_textfile = config.get('main', 'textfile_path')
@@ -162,7 +164,39 @@ def apply_noise(image):
             noisy_image = cv2.add(image[..., i], gray_noise.astype(np.uint8))
             image[..., i] = np.clip(noisy_image, 0, 255)  # Clip values to 8-bit range
         text = f"{algorithm} s={s}"
+        
+    elif algorithm == 'iso':
+        # ISO noise is a combination of Gaussian and Poisson noise
+        mean = 0
+        var = randint(*noise_range)
+        var *= noise_scale_factor # Scale down variance by noise_scale_factor
+        sigma = var**0.5
+        gaussian = np.random.normal(mean, sigma, image.shape)
+        poisson = np.random.poisson(image)
+        noise = gaussian + poisson
+        image = cv2.add(image, noise.astype(image.dtype))
+        image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
+        text = f"{algorithm} variance={var}"
 
+    elif algorithm == 'salt-and-pepper':
+        # Salt-and-pepper noise
+        intensity = randint(*sp_noise_range)
+        intensity *= sp_noise_scale_factor  # Scale down intensity by sp_noise_scale_factor
+
+        # Pepper mode
+        num_pepper = np.ceil(intensity * image.size * 0.25)  # Reduced to 25% of the image size
+        x_pepper = np.random.randint(0, image.shape[1], int(num_pepper))
+        y_pepper = np.random.randint(0, image.shape[0], int(num_pepper))
+        image[y_pepper, x_pepper] = 0
+
+        # Salt mode
+        num_salt = np.ceil(intensity * image.size * 0.5)
+        x_salt = np.random.randint(0, image.shape[1], int(num_salt))
+        y_salt = np.random.randint(0, image.shape[0], int(num_salt))
+        image[y_salt, x_salt] = 255
+
+        image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
+        text = f"{algorithm} intensity={intensity}"
     return image, text
 
 def apply_quantization(image):
