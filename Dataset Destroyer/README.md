@@ -54,6 +54,9 @@ Main features:
   - Box
   - Nearest
   - Lanczos
+ 
+- Unsharp Mask
+
 </details>
 
 Usage: 
