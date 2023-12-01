@@ -203,6 +203,9 @@ def apply_noise(image):
     return image, text
 
 def apply_quantization(image):
+    # Assert that the input image has 3 dimensions
+    assert len(image.shape) == 3, "Input image must have 3 dimensions (height, width, channels)"
+
     text = ''
     # Choose quantization algorithm
     if quantization_randomize:
@@ -237,7 +240,7 @@ def apply_quantization(image):
             image_np[..., i] = dithered_channel
 
         # Convert the numpy array back to an image
-        dithered_image_np = (image_np * 255).astype(np.uint8)
+        dithered_image_np = np.round(image_np * 255).astype(np.uint8)  # Round before converting to uint8
         image = Image.fromarray(dithered_image_np)
 
         text = f"{algorithm} colors_per_channel={colors_per_channel}"
@@ -248,7 +251,7 @@ def apply_quantization(image):
     image = np.array(image)
 
     return image, text
-
+    
 def apply_unsharp_mask(image, config):
     text = ''
     # Choose unsharp mask parameters
