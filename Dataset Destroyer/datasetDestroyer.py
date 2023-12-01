@@ -36,6 +36,9 @@ jpeg_quality_range = tuple(map(int, config.get('compression', 'jpeg_quality_rang
 webp_quality_range = tuple(map(int, config.get('compression', 'webp_quality_range').split(',')))
 h264_crf_level_range = tuple(map(int, config.get('compression', 'h264_crf_level_range').split(',')))
 hevc_crf_level_range = tuple(map(int, config.get('compression', 'hevc_crf_level_range').split(',')))
+vp9_crf_level_range = tuple(int(x) for x in config.get('compression', 'vp9_crf_level_range').split(','))
+mpeg_bitrate_range = tuple(map(int, config.get('compression', 'mpeg_bitrate_range').split(',')))
+mpeg2_bitrate_range = tuple(map(int, config.get('compression', 'mpeg2_bitrate_range').split(',')))
 size_factor = config.getfloat('scale', 'size_factor')
 scale_algorithms = config.get('scale', 'algorithms').split(',')
 down_up_scale_algorithms = config.get('scale', 'down_up_algorithms').split(',')
@@ -224,37 +227,54 @@ def apply_compression(image):
         result, encimg = cv2.imencode('.jpg', image, encode_param)
         image = cv2.imdecode(encimg, 1).copy()
         text = f"{algorithm} quality={quality}"
+
     elif algorithm == 'webp':
         quality = randint(*webp_quality_range)
         encode_param = [int(cv2.IMWRITE_WEBP_QUALITY), quality]
         result, encimg = cv2.imencode('.webp', image, encode_param)
         image = cv2.imdecode(encimg, 1).copy()
         text = f"{algorithm} quality={quality}"
-    elif algorithm in ['h264', 'hevc', 'mpeg', 'mpeg2']:
+
+    elif algorithm in ['h264', 'hevc', 'mpeg', 'mpeg2', 'vp9']:
         # Convert image to video format
         height, width, _ = image.shape
         codec = algorithm
         container = 'mpeg'
-        codec = algorithm
         if algorithm == 'mpeg':
             codec = 'mpeg1video'
+
         elif algorithm == 'mpeg2':
             codec = 'mpeg2video'
-        container = 'mpeg'
 
+        elif algorithm == 'vp9':
+            codec = 'libvpx-vp9'
+            container = 'webm'
+            crf_level = randint(*vp9_crf_level_range)
+            output_args = {'crf': str(crf_level), 'b:v': '0', 'cpu-used': '5'}
+    
         # Get CRF level or bitrate from config
         if algorithm == 'h264':
             crf_level = randint(*h264_crf_level_range)
             output_args = {'crf': crf_level}
+
         elif algorithm == 'hevc':
             crf_level = randint(*hevc_crf_level_range)
             output_args = {'crf': crf_level, 'x265-params': 'log-level=0'}
+
         elif algorithm == 'mpeg':
-            bitrate = config.get('compression', 'mpegbitrate')
+            bitrate = str(randint(*mpeg_bitrate_range)) + 'k'
             output_args = {'b': bitrate}
+
         elif algorithm == 'mpeg2':
-            bitrate = config.get('compression', 'mpeg2bitrate')
+            bitrate = str(randint(*mpeg2_bitrate_range)) + 'k'
             output_args = {'b': bitrate}
+
+        elif algorithm == 'vp9':
+            codec = 'libvpx-vp9'
+            container = 'webm'
+            crf_level = randint(*vp9_crf_level_range)
+            output_args = {'crf': str(crf_level), 'b:v': '0', 'deadline': 'realtime', 'cpu-used': '5'}
+
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
 
