@@ -4,10 +4,10 @@ import cv2
 import time
 import numpy as np
 import ffmpeg
-from random import randint, choice, shuffle
+from random import random, randint, choice, shuffle, uniform
 import concurrent.futures
 from tqdm import tqdm
-from PIL import Image
+from PIL import Image, ImageFilter
 from chainner_ext import DiffusionAlgorithm, UniformQuantization, error_diffusion_dither
 
 # Logging
@@ -48,6 +48,9 @@ down_up_scale_algorithms = config.get('scale', 'down_up_algorithms').split(',')
 scale_randomize = config.getboolean('scale', 'randomize')
 scale_range = tuple(map(float, config.get('scale', 'range').split(',')))
 blur_scale_factor = config.getfloat('blur', 'scale_factor')
+unsharp_mask_radius_range = tuple(map(float, config.get('unsharp_mask', 'radius_range').split(',')))
+unsharp_mask_percent_range = tuple(map(float, config.get('unsharp_mask', 'percent_range').split(',')))
+unsharp_mask_threshold_range = tuple(map(int, config.get('unsharp_mask', 'threshold_range').split(',')))
 print_to_image = config.getboolean('main', 'print')
 print_to_textfile = config.getboolean('main', 'textfile')
 path_to_textfile = config.get('main', 'textfile_path')
@@ -246,6 +249,22 @@ def apply_quantization(image):
 
     return image, text
 
+def apply_unsharp_mask(image, config):
+    text = ''
+    # Choose unsharp mask parameters
+    radius = np.random.uniform(unsharp_mask_radius_range[0], unsharp_mask_radius_range[1])
+    percent = np.random.uniform(unsharp_mask_percent_range[0], unsharp_mask_percent_range[1])
+    threshold = np.random.randint(unsharp_mask_threshold_range[0], unsharp_mask_threshold_range[1])
+
+    # Apply unsharp mask with chosen parameters
+    blurred = cv2.GaussianBlur(image, (0, 0), radius)
+    sharpened = cv2.addWeighted(image, 1.0 + percent, blurred, -percent, threshold)
+    image = np.clip(sharpened, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
+
+    text = f"unsharp_mask radius={radius} percent={percent} threshold={threshold}"
+
+    return image, text
+
 def apply_compression(image):
     text = ''
     # Choose compression algorithm
@@ -419,6 +438,8 @@ def process_image(image_path):
             image, text = apply_scale(image)
         elif degradation == 'quantization':
             image, text = apply_quantization(image)
+        elif degradation == 'unsharp_mask':
+            image, text = apply_unsharp_mask(image, config)
         all_text.append(f"{degradation}: {text}")
     if print_to_image:
         for order, text in enumerate(all_text, 1):
@@ -463,3 +484,4 @@ if __name__ == "__main__":
             executor.shutdown(wait=False)
             for future in futures:
                 future.cancel()
+
