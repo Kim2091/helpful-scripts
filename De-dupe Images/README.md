@@ -1,3 +1,7 @@
+## Just use a tool like [czkawka](https://github.com/qarmin/czkawka) instead
+
+
+
 This script moves (or deletes) duplicate images from an Image Pair Dataset (HR/LR dataset).
 
 It only checks for duplicates in the HR images. It then duplicates the move or delete operation in the LR images folder by matching the filename.
