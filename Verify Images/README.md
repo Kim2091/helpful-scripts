@@ -14,6 +14,7 @@ Usage:
 - Run the script with the directory to be searched as an argument
 - Optional arguments include:
   - `-f` or `--file_type` to search only for a specific image file type
+  - `-d` or `--deep` to do a "deep" scan. It loads the images individually to ensure they are not corrupted. Much slower than the default method, but it may catch more corrupted images
 - Enjoy!
 
 Example:
