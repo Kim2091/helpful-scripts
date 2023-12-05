@@ -8,7 +8,7 @@ from random import random, randint, choice, shuffle, uniform
 import concurrent.futures
 from tqdm import tqdm
 from PIL import Image, ImageFilter
-from chainner_ext import DiffusionAlgorithm, UniformQuantization, error_diffusion_dither
+from chainner_ext import DiffusionAlgorithm, UniformQuantization, error_diffusion_dither, resize, ResizeFilter
 
 # Logging
 import logging
@@ -376,6 +376,9 @@ def apply_compression(image):
     return image, text
 
 def apply_scale(image):
+    # Convert image to float32 and normalize pixel values
+    image = np.float32(image) / 255.0
+
     text = ''
     # Calculate new size
     h, w = image.shape[:2]
@@ -389,12 +392,17 @@ def apply_scale(image):
         algorithm = scale_algorithms[0]
 
     interpolation_map = {
-        'bicubic': cv2.INTER_CUBIC,
-        'bilinear': cv2.INTER_LINEAR,
-        'box': cv2.INTER_AREA,
-        'nearest': cv2.INTER_NEAREST,
-        'lanczos': cv2.INTER_LANCZOS4
+        'nearest': ResizeFilter.Nearest,
+        'linear': ResizeFilter.Linear,
+        'cubic_catrom': ResizeFilter.CubicCatrom,
+        'cubic_mitchell': ResizeFilter.CubicMitchell,
+        'cubic_bspline': ResizeFilter.CubicBSpline,
+        'lanczos': ResizeFilter.Lanczos,
+        'gauss': ResizeFilter.Gauss
     }
+
+    # Disable gamma correction for nearest neighbor
+    gamma_correction = algorithm != 'nearest'
 
     if algorithm == 'down_up':
         if scale_randomize:
@@ -404,22 +412,23 @@ def apply_scale(image):
             algorithm1 = down_up_scale_algorithms[0]
             algorithm2 = down_up_scale_algorithms[-1]
         scale_factor = np.random.uniform(*scale_range)
-        image = cv2.resize(image, (int(w * scale_factor), int(h * scale_factor)),
-                           interpolation=interpolation_map[algorithm1])
-        image = cv2.resize(image, (new_w, new_h), interpolation=interpolation_map[algorithm2])
+        image = resize(image, (int(w * scale_factor), int(h * scale_factor)), interpolation_map[algorithm1], gamma_correction=True)
+        image = resize(image, (new_w, new_h), interpolation_map[algorithm2], gamma_correction=True)
         if print_to_image:
             text = f"{algorithm} scale1factor={scale_factor:.2f} scale1algorithm={algorithm1} scale2factor={size_factor/scale_factor:.2f} scale2algorithm={algorithm2}"
         if print_to_textfile:
             text = f"{algorithm} scale1factor={scale_factor:.2f} scale1algorithm={algorithm1} scale2factor={size_factor/scale_factor:.2f} scale2algorithm={algorithm2}"
     else:
-        image = cv2.resize(image, (new_w, new_h), interpolation=interpolation_map[algorithm])
+        image = resize(image, (new_w, new_h), interpolation_map[algorithm], gamma_correction=True)
         if print_to_image:
             text = f"{algorithm} size factor={size_factor}"
         if print_to_textfile:
             text = f"{algorithm} size factor={size_factor}"
 
-    return image, text
+    # Convert image back to uint8 after resizing for script compatibility
+    image = (image * 255).astype(np.uint8)
 
+    return image, text
 def process_image(image_path):
     image = cv2.imread(image_path)
     if image is None:
