@@ -1,6 +1,6 @@
 *Written with the assistance of GitHub Copilot*
 
-This script's main usage is to search for corrupted image files in a directory, with an additional argument for finer control.
+This script's main purpose is to search for corrupted image files in a directory, with additional arguments for finer control.
 
 Main features:
 - Searches for corrupted image files in a specified directory
