@@ -398,11 +398,12 @@ def apply_scale(image):
         'cubic_mitchell': ResizeFilter.CubicMitchell,
         'cubic_bspline': ResizeFilter.CubicBSpline,
         'lanczos': ResizeFilter.Lanczos,
-        'gauss': ResizeFilter.Gauss
+        'gauss': ResizeFilter.Gauss,
+        'box': cv2.INTER_AREA  # Added box scaling using OpenCV
     }
 
-    # Disable gamma correction for nearest neighbor
-    gamma_correction = algorithm != 'nearest'
+    # Disable gamma correction for nearest neighbor and box
+    gamma_correction = algorithm not in ['nearest', 'box']
 
     if algorithm == 'down_up':
         if scale_randomize:
@@ -419,7 +420,11 @@ def apply_scale(image):
         if print_to_textfile:
             text = f"{algorithm} scale1factor={scale_factor:.2f} scale1algorithm={algorithm1} scale2factor={size_factor/scale_factor:.2f} scale2algorithm={algorithm2}"
     else:
-        image = resize(image, (new_w, new_h), interpolation_map[algorithm], gamma_correction=True)
+        if algorithm == 'box':
+            # Use OpenCV's resize function for box scaling
+            image = cv2.resize(image, (new_w, new_h), interpolation=interpolation_map[algorithm])
+        else:
+            image = resize(image, (new_w, new_h), interpolation_map[algorithm], gamma_correction=True)
         if print_to_image:
             text = f"{algorithm} size factor={size_factor}"
         if print_to_textfile:
@@ -429,6 +434,8 @@ def apply_scale(image):
     image = (image * 255).astype(np.uint8)
 
     return image, text
+
+
 def process_image(image_path):
     image = cv2.imread(image_path)
     if image is None:
