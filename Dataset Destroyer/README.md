@@ -49,6 +49,7 @@ Main features:
 
 - Scale
   - down_up
+  - Box
   - Linear
   - Cubic_Catrom
   - Cubic_Mitchell
