@@ -49,11 +49,12 @@ Main features:
 
 - Scale
   - down_up
-  - Bicubic
-  - Bilinear
-  - Box
-  - Nearest
+  - Linear
+  - Cubic_Catrom
+  - Cubic_Mitchell
+  - Cubic_BSpline
   - Lanczos
+  - Gauss
  
 - Unsharp Mask
 
