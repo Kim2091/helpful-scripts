@@ -1,6 +1,6 @@
 *Written with the assistance of Github Copilot*
 
-This script's main usage is to easily allow you to move files from one directory to another, with various controls. 
+This script's main purpose is to easily allow you to move files from one directory to another, with various controls. 
 
 Main features:
 - Moves files from a source directory to a destination directory
