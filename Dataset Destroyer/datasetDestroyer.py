@@ -186,21 +186,6 @@ def apply_noise(image):
             image[..., i] += gray_noise
         text = f"{algorithm} s={s}"
 
-    elif algorithm == 'simu_iso':
-        # Simulated ISO noise based on a combination of Gaussian and Poisson noise
-        mean = 0
-        var = randint(*noise_range)
-        var *= noise_scale_factor # Scale down variance by noise_scale_factor
-        sigma = var**0.5
-        gaussian = np.random.normal(mean, sigma, image.shape)
-        poisson = np.random.poisson(image)
-        noise = gaussian + poisson
-        # Scale the noise to the range of the image
-        noise = noise - np.min(noise)
-        noise = noise / np.max(noise)
-        image += noise
-        text = f"{algorithm} variance={var}"
-
     elif algorithm == 'salt-and-pepper':
         # Salt-and-pepper noise
         intensity = randint(*sp_noise_range)
