@@ -195,6 +195,9 @@ def apply_noise(image):
         gaussian = np.random.normal(mean, sigma, image.shape)
         poisson = np.random.poisson(image)
         noise = gaussian + poisson
+        # Scale the noise to the range of the image
+        noise = noise - np.min(noise)
+        noise = noise / np.max(noise)
         image += noise
         text = f"{algorithm} variance={var}"
 
