@@ -126,6 +126,7 @@ def apply_blur(image):
     return image, text
 
 def apply_noise(image):
+    
     text = ''
     # Choose noise algorithm
     if noise_randomize:
@@ -141,6 +142,7 @@ def apply_noise(image):
         image = cv2.add(image, noise.astype(image.dtype))
         image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
         text = f"{algorithm} intensity={intensity}"
+
     elif algorithm == 'gaussian':
         mean = 0
         var = randint(*noise_range)
@@ -150,18 +152,20 @@ def apply_noise(image):
         image = cv2.add(image, noise.astype(image.dtype))
         image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
         text = f"{algorithm} variance={var}"
+
     elif algorithm == 'color':
         noise = np.zeros_like(image, dtype=np.float32)  # Ensure noise is of type float32
         m = (0, 0, 0)
-        s = (randint(*noise_range), randint(*noise_range), randint(*noise_range))
+        s = (randint(*noise_range) * noise_scale_factor, randint(*noise_range) * noise_scale_factor, randint(*noise_range) * noise_scale_factor)
         cv2.randn(noise, m, s)
         image = cv2.add(image, noise.astype(np.uint8))
         image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
         text = f"{algorithm} s={s}"
+
     elif algorithm == 'gray':
         gray_noise = np.zeros((image.shape[0], image.shape[1]), dtype=np.float32)  # Ensure gray_noise is of type float32
         m = (0,)
-        s = (randint(*noise_range),)
+        s = (randint(*noise_range) * noise_scale_factor,)
         cv2.randn(gray_noise, m, s)
         for i in range(image.shape[2]):  # Add noise to each channel separately
             noisy_image = cv2.add(image[..., i], gray_noise.astype(np.uint8))
