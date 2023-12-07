@@ -186,8 +186,8 @@ def apply_noise(image):
             image[..., i] += gray_noise
         text = f"{algorithm} s={s}"
 
-    elif algorithm == 'iso':
-        # ISO noise is a combination of Gaussian and Poisson noise
+    elif algorithm == 'simu_iso':
+        # Simulated ISO noise based on a combination of Gaussian and Poisson noise
         mean = 0
         var = randint(*noise_range)
         var *= noise_scale_factor # Scale down variance by noise_scale_factor
