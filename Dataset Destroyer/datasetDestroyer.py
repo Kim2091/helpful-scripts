@@ -92,6 +92,9 @@ def apply_blur(image):
     else:
         algorithm = blur_algorithms[0]
 
+    # Normalize the image to the range [0, 1]
+    image = image.astype(float) / 255
+
     # Apply blur with chosen algorithm
     if algorithm == 'average':
         ksize = randint(*blur_range)
@@ -105,28 +108,43 @@ def apply_blur(image):
         ksize = ksize if ksize % 2 == 1 else ksize + 1  # Ensure ksize is an odd integer
         image = cv2.GaussianBlur(image, (ksize, ksize), 0)
         text = f"{algorithm} ksize={ksize}"
-    elif algorithm == 'isotropic':
-        # Apply isotropic blur using a Gaussian filter with the same standard deviation in both the x and y directions
-        sigma = randint(*blur_range)
-        sigma *= blur_scale_factor  # Scale down sigma by blur_scale_factor
-        ksize = 2 * int(4 * sigma + 0.5) + 1
-        image = cv2.GaussianBlur(image, (ksize, ksize), sigmaX=sigma, sigmaY=sigma)
-        text = f"{algorithm} ksize={ksize} sigma={sigma}"
     elif algorithm == 'anisotropic':
         # Apply anisotropic blur using a Gaussian filter with different standard deviations in the x and y directions
         sigma_x = randint(*blur_range)
         sigma_y = randint(*blur_range)
-        sigma_x *= blur_scale_factor  # Scale down sigma_x by blur_scale_factor
-        sigma_y *= blur_scale_factor  # Scale down sigma_y by blur_scale_factor
-        ksize_x = 2 * int(4 * sigma_x + 0.5) + 1
-        ksize_y = 2 * int(4 * sigma_y + 0.5) + 1
-        image = cv2.GaussianBlur(image, (ksize_x, ksize_y), sigmaX=sigma_x, sigmaY=sigma_y)
-        text = f"{algorithm} sigma_x={sigma_x} sigma_y={sigma_y} ksize_x={ksize_x} ksize_y={ksize_y}"
+        angle = uniform(0, 360)
+
+        # Scale down sigma by blur_scale_factor
+        sigma_x *= blur_scale_factor  
+        sigma_y *= blur_scale_factor
+
+        # Convert angle to radians
+        angle = np.deg2rad(angle)
+
+        # Create a 2D Gaussian kernel with the desired direction
+        kernel_size = max(2 * int(4 * max(sigma_x, sigma_y) + 0.5) + 1, 3)
+        y, x = np.mgrid[-kernel_size//2 + 1:kernel_size//2 + 1, -kernel_size//2 + 1:kernel_size//2 + 1]
+        rotx = x * np.cos(angle) - y * np.sin(angle)  # Rotate x by the angle
+        roty = x * np.sin(angle) + y * np.cos(angle)  # Rotate y by the angle
+        kernel = np.exp(-(rotx**2/(2*sigma_x**2) + roty**2/(2*sigma_y**2)))
+
+        # Normalize the kernel
+        kernel /= np.sum(kernel)
+
+        # Apply the kernel to the image
+        image = cv2.filter2D(image, -1, kernel)
+
+        text = f"{algorithm} sigma_x={sigma_x} sigma_y={sigma_y} angle={np.rad2deg(angle)}"
+
+    # Scale the image back to the range [0, 255]
+    image = (image * 255).astype(np.uint8)
 
     return image, text
 
 def apply_noise(image):
-    
+    # Normalize the image to the range [0, 1]
+    image = image.astype(float) / 255
+
     text = ''
     # Choose noise algorithm
     if noise_randomize:
@@ -139,8 +157,7 @@ def apply_noise(image):
         intensity = randint(*noise_range)
         intensity *= noise_scale_factor  # Scale down intensity by noise_scale_factor
         noise = np.random.uniform(-intensity, intensity, image.shape)
-        image = cv2.add(image, noise.astype(image.dtype))
-        image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
+        image += noise
         text = f"{algorithm} intensity={intensity}"
 
     elif algorithm == 'gaussian':
@@ -149,29 +166,26 @@ def apply_noise(image):
         var *= noise_scale_factor # Scale down variance by noise_scale_factor
         sigma = var**0.5
         noise = np.random.normal(mean, sigma, image.shape)
-        image = cv2.add(image, noise.astype(image.dtype))
-        image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
+        image += noise
         text = f"{algorithm} variance={var}"
 
     elif algorithm == 'color':
-        noise = np.zeros_like(image, dtype=np.float32)  # Ensure noise is of type float32
+        noise = np.zeros_like(image)
         m = (0, 0, 0)
         s = (randint(*noise_range) * noise_scale_factor, randint(*noise_range) * noise_scale_factor, randint(*noise_range) * noise_scale_factor)
         cv2.randn(noise, m, s)
-        image = cv2.add(image, noise.astype(np.uint8))
-        image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
+        image += noise
         text = f"{algorithm} s={s}"
 
     elif algorithm == 'gray':
-        gray_noise = np.zeros((image.shape[0], image.shape[1]), dtype=np.float32)  # Ensure gray_noise is of type float32
+        gray_noise = np.zeros((image.shape[0], image.shape[1]))
         m = (0,)
         s = (randint(*noise_range) * noise_scale_factor,)
         cv2.randn(gray_noise, m, s)
         for i in range(image.shape[2]):  # Add noise to each channel separately
-            noisy_image = cv2.add(image[..., i], gray_noise.astype(np.uint8))
-            image[..., i] = np.clip(noisy_image, 0, 255)  # Clip values to 8-bit range
+            image[..., i] += gray_noise
         text = f"{algorithm} s={s}"
-        
+
     elif algorithm == 'iso':
         # ISO noise is a combination of Gaussian and Poisson noise
         mean = 0
@@ -181,8 +195,7 @@ def apply_noise(image):
         gaussian = np.random.normal(mean, sigma, image.shape)
         poisson = np.random.poisson(image)
         noise = gaussian + poisson
-        image = cv2.add(image, noise.astype(image.dtype))
-        image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
+        image += noise
         text = f"{algorithm} variance={var}"
 
     elif algorithm == 'salt-and-pepper':
@@ -200,10 +213,13 @@ def apply_noise(image):
         num_salt = np.ceil(intensity * image.size * 0.5)
         x_salt = np.random.randint(0, image.shape[1], int(num_salt))
         y_salt = np.random.randint(0, image.shape[0], int(num_salt))
-        image[y_salt, x_salt] = 255
-
-        image = np.clip(image, 0, 255).astype(np.uint8)  # Clip values to 8-bit range
+        image[y_salt, x_salt] = 1
         text = f"{algorithm} intensity={intensity}"
+
+    # Clip the values to the range [0, 1] and scale back to the range [0, 255]
+    image = np.clip(image, 0, 1)
+    image = (image * 255).astype(np.uint8)
+
     return image, text
 
 def apply_quantization(image):
