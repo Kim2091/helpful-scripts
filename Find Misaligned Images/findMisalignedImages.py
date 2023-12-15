@@ -5,30 +5,31 @@ import concurrent.futures
 import numpy as np
 import logging
 
+def confirm_paths(hr_path, lr_path, output_path):
+    # Find the first pair of images to ensure paths are correct
+    try:
+        hr_files = {os.path.relpath(os.path.join(root, file), hr_path) for root, dirs, files in os.walk(hr_path) for file in files}
+        lr_files = {os.path.relpath(os.path.join(root, file), lr_path) for root, dirs, files in os.walk(lr_path) for file in files}
+        common_files = hr_files & lr_files
+        sample_file = next(iter(common_files))
+    except StopIteration:
+        sample_file = "No common files found in HR and LR paths"
+
+    # Confirm paths are correct
+    print(f"HR Path: {hr_path} (Sample file: {os.path.join(hr_path, sample_file)})")
+    print(f"LR Path: {lr_path} (Sample file: {os.path.join(lr_path, sample_file)})")
+    print(f"Output Path: {output_path}")
+    confirm = input("Are these paths correct? (yes/no): ")
+    if confirm.lower() != 'yes':
+        print("Please correct the paths and run the script again.")
+        exit()
+
 # Paths
-hr_path = 'I:/Dataset/SwatKats/hr/1'
-lr_path = 'I:/Dataset/SwatKats/lr/1'
-output_path = 'I:/Dataset/SwatKats/Output1'
+hr_path = 'path\to\hr\folder'
+lr_path = 'path\to\lr\folder'
+output_path = 'path\to\output\folder'
 
-# Find the first pair of images to ensure paths are correct
-try:
-    hr_files = os.listdir(hr_path)
-    lr_files = os.listdir(lr_path)
-    common_files = set(hr_files) & set(lr_files)
-    sample_file = next(iter(common_files))
-    hr_sample_path = os.path.join(hr_path, sample_file)
-    lr_sample_path = os.path.join(lr_path, sample_file)
-except StopIteration:
-    hr_sample_path = lr_sample_path = "No common files found in HR and LR paths"
-
-# Confirm paths are correct
-print(f"HR Path: {hr_path} (Sample file: {hr_sample_path})")
-print(f"LR Path: {lr_path} (Sample file: {lr_sample_path})")
-print(f"Output Path: {output_path}")
-confirm = input("Are these paths correct? (yes/no): ")
-if confirm.lower() != 'yes':
-    print("Please correct the paths and run the script again.")
-    exit()
+confirm_paths(hr_path, lr_path, output_path)
 
 # Set up logging
 log_file_path = os.path.join(output_path, 'image_comparator.log')
@@ -88,8 +89,16 @@ class ImageComparator:
     def scan_and_compare(self, folder1, folder2, dest_folder):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                filenames = os.listdir(folder1)
-                futures = list(executor.map(self.process_image, filenames, [folder1]*len(filenames), [folder2]*len(filenames), [dest_folder]*len(filenames)))
+                for dirpath, _, filenames in os.walk(folder1):
+                    # Get the relative path to the current directory from folder1
+                    rel_dir = os.path.relpath(dirpath, folder1)
+                    
+                    # Construct the corresponding directory path in folder2
+                    dirpath2 = os.path.join(folder2, rel_dir)
+                    
+                    # Check if the corresponding directory exists in folder2
+                    if os.path.exists(dirpath2):
+                        futures = list(executor.map(self.process_image, filenames, [dirpath]*len(filenames), [dirpath2]*len(filenames), [dest_folder]*len(filenames)))
         except KeyboardInterrupt:
             print("Interrupted by user. Exiting...")
             return
