@@ -1,12 +1,12 @@
 *Written with the assistance of GitHub Copilot*
 
-This script allows you to compare images from two folders and move the ones with low similarity scores to a specified output folder
+This script allows you easily detect and move paired misaligned images automatically move them to a specified output folder
 
 **Features:**
 
 * Compare images from two folders based on their similarity scores
 * Move images with low similarity scores to a specified output folder
-* Overlay the moved images and save them in the output folder
+* Overlay the moved images and save them in the output folder to showcase misalignment
 * Multithreading support for faster image comparison and moving
 
 **Required Packages:**
