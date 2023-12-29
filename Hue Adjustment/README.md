@@ -2,6 +2,8 @@
 
 This script allows you easily adjust hue, brightness, and contrast in a dataset. It is also capable of duplicating the original images with various adjustments applied to them.
 
+You may consider using this script for use with particularly small image super resolution datasets. It can help reduce color based artifacts.
+
 **Features:**
 
 * Adjust hue, brightness, and contrast separately
