@@ -372,7 +372,9 @@ def apply_compression(image):
         process1.wait()
 
         try:
-            image = np.frombuffer(out, np.uint8).reshape([height, width, 3]).copy()
+            # Hacky workaround found by the database. If you notice issues with image outputs, comment this out and replace it with the line underneath
+            image = np.frombuffer(out, np.uint8)[:(height * width * 3)].reshape(image.shape).copy()
+            # image = np.frombuffer(out, np.uint8).reshape([height, width, 3]).copy()
             first_arg = list(output_args.items())[0]
             text = f"{algorithm} {first_arg[0]}={first_arg[1]}"
         except ValueError as e:
