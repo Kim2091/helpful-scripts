@@ -40,8 +40,8 @@ webp_quality_range = tuple(map(int, config.get('compression', 'webp_quality_rang
 h264_crf_level_range = tuple(map(int, config.get('compression', 'h264_crf_level_range').split(',')))
 hevc_crf_level_range = tuple(map(int, config.get('compression', 'hevc_crf_level_range').split(',')))
 vp9_crf_level_range = tuple(int(x) for x in config.get('compression', 'vp9_crf_level_range').split(','))
-mpeg_bitrate_range = tuple(map(int, config.get('compression', 'mpeg_bitrate_range').split(',')))
-mpeg2_bitrate_range = tuple(map(int, config.get('compression', 'mpeg2_bitrate_range').split(',')))
+mpeg_qscale_range = tuple(map(int, config.get('compression', 'mpeg_qscale_range').split(',')))
+mpeg2_qscale_range = tuple(map(int, config.get('compression', 'mpeg2_qscale_range').split(',')))
 size_factor = config.getfloat('scale', 'size_factor')
 scale_algorithms = config.get('scale', 'algorithms').split(',')
 down_up_scale_algorithms = config.get('scale', 'down_up_algorithms').split(',')
@@ -326,12 +326,12 @@ def apply_compression(image):
             output_args = {'crf': crf_level, 'x265-params': 'log-level=0'}
 
         elif algorithm == 'mpeg':
-            bitrate = str(randint(*mpeg_bitrate_range)) + 'k'
-            output_args = {'b': bitrate}
+            qscale_level = str(randint(*mpeg_qscale_range))
+            output_args = {'qscale:v': str(qscale_level), 'qmax': str(qscale_level), 'qmin': str(qscale_level)}
 
         elif algorithm == 'mpeg2':
-            bitrate = str(randint(*mpeg2_bitrate_range)) + 'k'
-            output_args = {'b': bitrate}
+            qscale_level = str(randint(*mpeg2_qscale_range))
+            output_args = {'qscale:v': str(qscale_level), 'qmax': str(qscale_level), 'qmin': str(qscale_level)}
 
         elif algorithm == 'vp9':
             codec = 'libvpx-vp9'
