@@ -27,6 +27,8 @@ def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, mi
             image_gray = color.rgb2gray(image_rgb)  # Convert the RGB image to grayscale
             edges = filters.sobel(image_gray)  # Apply the Sobel operator
             edge_threshold = np.sum(edges) * 0.01  # Set the threshold to 1% of the total edge intensity
+        else:
+            edge_threshold = None
         
         for i in range(tiles_per_row * tiles_per_col):
             if tiles_saved >= num_tiles:
@@ -40,7 +42,7 @@ def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, mi
             tile_rgb = np.array(tile)[..., :3]  # Discard the alpha channel if it exists
             tile_gray = color.rgb2gray(tile_rgb)  # Convert the RGB image to grayscale
             edges = filters.sobel(tile_gray)  # Apply the Sobel operator
-            if np.sum(edges) < edge_threshold:  # If the sum of the edge intensities is below the threshold
+            if edge_threshold is not None and np.sum(edges) < edge_threshold:
                 tiles_skipped += 1
                 continue
             if min_size and (tile.width < min_size[0] or tile.height < min_size[1]):
