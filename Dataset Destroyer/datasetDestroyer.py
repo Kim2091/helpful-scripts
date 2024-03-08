@@ -403,7 +403,12 @@ def apply_scale(image):
 
     interpolation_map = {
         'nearest': ResizeFilter.Nearest,
+        'box' : ResizeFilter.Box,
+        'hermite' : ResizeFilter.Hermite,
+        'hamming' : ResizeFilter.Hamming,
         'linear': ResizeFilter.Linear,
+        'hann' : ResizeFilter.Hann,
+        'lagrange' : ResizeFilter.Lagrange,
         'cubic_catrom': ResizeFilter.CubicCatrom,
         'cubic_mitchell': ResizeFilter.CubicMitchell,
         'cubic_bspline': ResizeFilter.CubicBSpline,
