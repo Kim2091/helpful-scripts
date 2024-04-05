@@ -36,6 +36,11 @@ sp_noise_range = tuple(map(int, config.get('noise', 'sp_range').split(',')))
 sp_noise_scale_factor = config.getfloat('noise', 'sp_scale_factor')
 compression_algorithms = config.get('compression', 'algorithms').split(',')
 compression_randomize = config.getboolean('compression', 'randomize')
+chroma_blur_algorithms = config.get('chroma', 'algorithms').split(',')
+chroma_blur_randomize = config.getboolean('chroma', 'randomize')
+chroma_horizontal_blur_range = tuple(map(int, config.get('chroma', 'horizontal_range').split(',')))
+chroma_vertical_blur_range = tuple(map(int, config.get('chroma', 'vertical_range').split(',')))
+chroma_blur_scale_factor = config.getfloat('chroma', 'scale_factor')
 jpeg_quality_range = tuple(map(int, config.get('compression', 'jpeg_quality_range').split(',')))
 webp_quality_range = tuple(map(int, config.get('compression', 'webp_quality_range').split(',')))
 h264_crf_level_range = tuple(map(int, config.get('compression', 'h264_crf_level_range').split(',')))
@@ -218,6 +223,44 @@ def apply_noise(image):
 
     return image, text
 
+def apply_chroma(image):
+    assert len(image.shape) == 3, "Input image must have 3 dimensions (height, width, channels)"
+
+    text = ''
+
+    # Choose chroma blur algorithm
+    if chroma_blur_randomize:
+        algorithm = choice(chroma_blur_algorithms)
+    else:
+        algorithm = chroma_blur_algorithms[0]
+
+    # Convert RGB to YUV, split YUV channels
+    yuv_image = cv2.cvtColor(image, cv2.COLOR_RGB2YUV)
+    Y, U, V = cv2.split(yuv_image)
+
+    if algorithm == 'gaussian':
+        # Generate random kernel sizes within specified horizontal and vertical ranges
+        horizontal_ksize = randint(*chroma_horizontal_blur_range)
+        vertical_ksize = randint(*chroma_vertical_blur_range)
+        
+        # Ensure kernel sizes are odd integers
+        horizontal_ksize = horizontal_ksize if horizontal_ksize % 2 == 1 else horizontal_ksize + 1
+        vertical_ksize = vertical_ksize if vertical_ksize % 2 == 1 else vertical_ksize + 1
+        
+        # Blur U and V channels (chroma channels) with Gaussian blur
+        blurred_U = cv2.GaussianBlur(U, (horizontal_ksize, vertical_ksize), 0)
+        blurred_V = cv2.GaussianBlur(V, (horizontal_ksize, vertical_ksize), 0)
+        
+        # Merge blurred U and V channels with original Y channel
+        blurred_yuv_image = cv2.merge([Y, blurred_U, blurred_V])
+        
+        # Convert back to RGB
+        image = cv2.cvtColor(blurred_yuv_image, cv2.COLOR_YUV2RGB)
+        
+        text = f"{algorithm} horizontal_ksize={horizontal_ksize} vertical_ksize={vertical_ksize}"
+
+    return image, text
+    
 def apply_quantization(image):
     # Assert that the input image has 3 dimensions
     assert len(image.shape) == 3, "Input image must have 3 dimensions (height, width, channels)"
@@ -452,7 +495,7 @@ def apply_scale(image):
     image = (image * 255).astype(np.uint8)
 
     return image, text
-    
+
 def process_image(image_path):
     image = cv2.imread(image_path)
     if image is None:
@@ -468,6 +511,8 @@ def process_image(image_path):
                 degradation_order.append('blur')
             elif degradation == 'noise' and random() < noise_likelihood:
                 degradation_order.append('noise')
+            elif degradation == 'chroma' and random() < chroma_likelihood:
+                degradation_order.append('chroma')
             elif degradation == 'compression' and random() < compression_likelihood:
                 degradation_order.append('compression')
             elif degradation == 'scale' and random() < scale_likelihood:
@@ -485,6 +530,8 @@ def process_image(image_path):
             image, text = apply_blur(image)
         elif degradation == 'noise':
             image, text = apply_noise(image)
+        elif degradation == 'chroma':
+            image, text = apply_chroma(image)
         elif degradation == 'compression':
             image, text = apply_compression(image)
         elif degradation == 'scale':
