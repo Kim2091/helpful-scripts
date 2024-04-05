@@ -27,12 +27,13 @@ degradations_randomize = config.getboolean('main', 'randomize')
 blur_algorithms = config.get('blur', 'algorithms').split(',')
 blur_randomize = config.getboolean('blur', 'randomize')
 blur_range = tuple(map(int, config.get('blur', 'range').split(',')))
+blur_scale_factor = config.getfloat('blur', 'scale_factor')
 noise_algorithms = config.get('noise', 'algorithms').split(',')
 noise_randomize = config.getboolean('noise', 'randomize')
 noise_range = tuple(map(int, config.get('noise', 'range').split(',')))
 noise_scale_factor = config.getfloat('noise', 'scale_factor')
-sp_noise_range = tuple(map(int, config.get('noise', 'sp_range').split(',')))  # Salt and pepper noise range
-sp_noise_scale_factor = config.getfloat('noise', 'sp_scale_factor')  # Salt and pepper noise scale factor
+sp_noise_range = tuple(map(int, config.get('noise', 'sp_range').split(',')))
+sp_noise_scale_factor = config.getfloat('noise', 'sp_scale_factor')
 compression_algorithms = config.get('compression', 'algorithms').split(',')
 compression_randomize = config.getboolean('compression', 'randomize')
 jpeg_quality_range = tuple(map(int, config.get('compression', 'jpeg_quality_range').split(',')))
@@ -47,7 +48,6 @@ scale_algorithms = config.get('scale', 'algorithms').split(',')
 down_up_scale_algorithms = config.get('scale', 'down_up_algorithms').split(',')
 scale_randomize = config.getboolean('scale', 'randomize')
 scale_range = tuple(map(float, config.get('scale', 'range').split(',')))
-blur_scale_factor = config.getfloat('blur', 'scale_factor')
 unsharp_mask_radius_range = tuple(map(float, config.get('unsharp_mask', 'radius_range').split(',')))
 unsharp_mask_percent_range = tuple(map(float, config.get('unsharp_mask', 'percent_range').split(',')))
 unsharp_mask_threshold_range = tuple(map(int, config.get('unsharp_mask', 'threshold_range').split(',')))
@@ -59,6 +59,14 @@ path_to_textfile = config.get('main', 'textfile_path')
 quantization_algorithms = config.get('quantization', 'algorithms').split(',')
 quantization_randomize = config.getboolean('quantization', 'randomize')
 quantization_range = tuple(map(int, config.get('quantization', 'range').split(',')))
+
+# Add new config values for likelihood of each degradation
+blur_likelihood = config.getfloat('likelihood', 'blur', fallback=0.3)
+noise_likelihood = config.getfloat('likelihood', 'noise', fallback=0.3)
+compression_likelihood = config.getfloat('likelihood', 'compression', fallback=0.2)
+scale_likelihood = config.getfloat('likelihood', 'scale', fallback=0.1)
+quantization_likelihood = config.getfloat('likelihood', 'quantization', fallback=0.1)
+unsharp_mask_likelihood = config.getfloat('likelihood', 'unsharp_mask', fallback=0.1)
 
 def print_text_to_image(image, text, order):
     h, w = image.shape[:2]
@@ -444,16 +452,34 @@ def apply_scale(image):
     image = (image * 255).astype(np.uint8)
 
     return image, text
+    
 def process_image(image_path):
     image = cv2.imread(image_path)
     if image is None:
         print(f"Failed to load image at {image_path}")
         return
-    
-    degradation_order = degradations.copy()
+
+    degradation_order = []
     all_text = []
+
     if degradations_randomize:
+        for degradation in degradations:
+            if degradation == 'blur' and random() < blur_likelihood:
+                degradation_order.append('blur')
+            elif degradation == 'noise' and random() < noise_likelihood:
+                degradation_order.append('noise')
+            elif degradation == 'compression' and random() < compression_likelihood:
+                degradation_order.append('compression')
+            elif degradation == 'scale' and random() < scale_likelihood:
+                degradation_order.append('scale')
+            elif degradation == 'quantization' and random() < quantization_likelihood:
+                degradation_order.append('quantization')
+            elif degradation == 'unsharp_mask' and random() < unsharp_mask_likelihood:
+                degradation_order.append('unsharp_mask')
         shuffle(degradation_order)
+    else:
+        degradation_order = degradations.copy()
+
     for order, degradation in enumerate(degradation_order, 1):
         if degradation == 'blur':
             image, text = apply_blur(image)
@@ -468,6 +494,7 @@ def process_image(image_path):
         elif degradation == 'unsharp_mask':
             image, text = apply_unsharp_mask(image, config)
         all_text.append(f"{degradation}: {text}")
+
     if print_to_image:
         for order, text in enumerate(all_text, 1):
             image = print_text_to_image(image, text, order)
@@ -475,14 +502,14 @@ def process_image(image_path):
     # Save image
     output_path = os.path.join(output_folder, os.path.relpath(image_path, input_folder))
     output_path = os.path.splitext(output_path)[0] + '.' + output_format
-    
+
     # Create output folder if it doesn't exist
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     cv2.imwrite(output_path, image)
-    
 
     if print_to_textfile:
-        print_text_to_textfile(path_to_textfile + "/applied_degradations.txt",os.path.basename(output_path) + ' - ' + ', '.join(all_text))
+        print_text_to_textfile(path_to_textfile + "/applied_degradations.txt", os.path.basename(output_path) + ' - ' + ', '.join(all_text))
+
 # Process images recursively
 image_paths = []
 for subdir, dirs, files in os.walk(input_folder):
