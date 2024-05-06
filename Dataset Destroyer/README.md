@@ -8,6 +8,7 @@ Main features:
 - Adjustable degradations
 - Supports: Blur, noise, compression, scaling, quantization, and unsharp mask
 - Adjustable strengths and order for every degradation, with a randomization option
+- Probability control for each degradation
 - Video compression support through ffmpeg-python
 - Progress bar
   
@@ -58,6 +59,8 @@ Main features:
   - Gauss
  
 - Unsharp Mask
+
+- Chroma Blur
 
 </details>
 
