@@ -72,6 +72,7 @@ compression_likelihood = config.getfloat('likelihood', 'compression', fallback=0
 scale_likelihood = config.getfloat('likelihood', 'scale', fallback=0.1)
 quantization_likelihood = config.getfloat('likelihood', 'quantization', fallback=0.1)
 unsharp_mask_likelihood = config.getfloat('likelihood', 'unsharp_mask', fallback=0.1)
+chroma_likelihood = config.getfloat('likelihood', 'chroma', fallback=0.3)
 
 def print_text_to_image(image, text, order):
     h, w = image.shape[:2]
