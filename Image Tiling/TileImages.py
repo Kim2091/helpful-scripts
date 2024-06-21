@@ -5,7 +5,7 @@ from multiprocessing import Pool
 import numpy as np
 from skimage import color, filters
 
-def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, min_size, edge_threshold=None):
+def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, min_size, edge_threshold=None, seed=None):
     try:
         image = Image.open(image_path)
         width, height = image.size
@@ -18,7 +18,7 @@ def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, mi
         tiles_saved = 0
         tiles_skipped = 0
         tile_indices = np.arange(tiles_per_row * tiles_per_col)
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(seed)  # Use the provided seed or None
         rng.shuffle(tile_indices)
         
         # Calculate the edge threshold for the entire image if not specified
@@ -57,7 +57,7 @@ def process_image(image_path, output_folder, tile_size, num_tiles, grayscale, mi
     except Exception as e:
         print(f"Error processing {image_path}: {e}")
 
-def process_folder(input_folder, output_folder, tile_size, num_tiles, grayscale, min_size, std_dev_threshold):
+def process_folder(input_folder, output_folder, tile_size, num_tiles, grayscale, min_size, std_dev_threshold, seed):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     pool = Pool()
@@ -65,7 +65,7 @@ def process_folder(input_folder, output_folder, tile_size, num_tiles, grayscale,
         for file in files:
             if file.endswith(('.png', '.jpg', '.webp')):
                 image_path = os.path.join(root, file)
-                pool.apply_async(process_image, (image_path, output_folder, tile_size, num_tiles, grayscale, min_size, std_dev_threshold))
+                pool.apply_async(process_image, (image_path, output_folder, tile_size, num_tiles, grayscale, min_size, std_dev_threshold, seed))
     pool.close()
     pool.join()
 
@@ -85,8 +85,10 @@ if __name__ == '__main__':
                         help='Minimum size of tiles to save (width height)')
     parser.add_argument('-e', '--edge-threshold', action='store_true',
                         help='Enable edge intensity threshold for skipping tiles with low content.')
+    parser.add_argument('-s', '--seed', type=int,
+                        help='Seed for random number generator to ensure reproducible results')
     args = parser.parse_args()
     process_folder(args.input_folder, args.output_folder,
                    args.tile_size, args.num_tiles,
                    args.grayscale, args.min_size,
-                   args.edge_threshold)
+                   args.edge_threshold, args.seed)
