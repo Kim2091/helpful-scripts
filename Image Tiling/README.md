@@ -22,3 +22,4 @@ How to use: `python TileImages.py /path/to/image/folder /path/to/output/folder`
 * `-g` - Saves your images in grayscale
 * `-m` - Sets a minimum size for tiles. If any tiles are below the specified size, they will not be saved
 * `-e` - Skip tiles based on edge intensity threshold calculated with Sobel edge detection. Allows you to skip tiles if they contain little valid content. Easily triggered by noise however.
+* `-s` - Sets a seed for the random number generator. This is for usage with `-n`. Using `-e` with it will break compatibility
