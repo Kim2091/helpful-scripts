@@ -1,0 +1,12 @@
+{
+  "in_folder": "/run/media/umzi/H/dat/ModernAnimation1080_v2/HR",
+  "out_folder": "/run/media/umzi/H/dat/tile_test/1",
+  "tiler": {
+    "type": "best",
+    "scale": 16
+  },
+  "tile_size": 1024,
+  "shuffle": true,
+  "real_name": true,
+  "process": "for"
+}
