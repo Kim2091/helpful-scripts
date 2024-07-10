@@ -1,17 +1,16 @@
 # Video Processing Scripts
 
-This repository contains two complementary scripts for video processing: `encodeVideo.sh` and `extractFrames.sh`. These scripts work together to provide a comprehensive solution for creating multi-quality video datasets and extracting frames for analysis or machine learning tasks.
+This repository contains two complementary scripts for video processing: `encodeVideo.sh` and `extractFrames.sh`. These scripts work together to allow you to quickly prepare a dataset based on video encoders.
 
 **Features:**
 
 * Create multi-quality video datasets with `encodeVideo.sh`:
-  - Encode videos with varying quality segments using multiple codecs
-  - Support for various video codecs including h264, vp8, vp9, mpeg, mpeg2, svt-av1, and hevc
+  - Encode videos with varying quality in segments using randomized quality values
+  - Support for these codecs: h264, vp8, vp9, mpeg, mpeg2, svt-av1, and hevc
   - Customizable quality ranges for encoding
 * Extract frames from the generated videos using `extractFrames.sh`:
   - Extract frames from both high and low quality videos at specified intervals
   - Flexible frame extraction intervals
-* Organized output with detailed logging for both processes
 
 **Required Packages:**
 
@@ -67,8 +66,3 @@ Both scripts generate output in organized directories:
 
 - `encodeVideo.sh` creates a multi-quality video file and a detailed encoding log.
 - `extractFrames.sh` creates separate directories for high and low quality frames, named after the low quality video file.
-
-These outputs can be used for various purposes, such as creating datasets for machine learning models that work with video quality enhancement or compression artifact reduction.
-
-**Credits:**
-These scripts were developed to provide a flexible and efficient pipeline for creating multi-quality video datasets and extracting frames for analysis or machine learning tasks.
