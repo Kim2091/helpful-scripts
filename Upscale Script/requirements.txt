@@ -4,3 +4,4 @@ spandrel==0.4.0
 spandrel_extra_arches==0.2.0
 torch==2.4.1+cu124
 tqdm==4.66.5
+chainner-ext==0.3.10
