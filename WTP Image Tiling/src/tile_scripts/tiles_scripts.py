@@ -24,7 +24,10 @@ def lin_tile(input_folder: str, img_list: list[str], tile_size: int, number_tile
     img_dict = {}
     list_index = []
     for img_name in tqdm(img_list, desc="Tile generation"):
-        w, h = img_size(input_folder, img_name)
+        try:
+            w, h = img_size(input_folder, img_name)
+        except OSError as e:
+            continue
         if w < tile_size or h < tile_size:
             continue
         x_cords = np.arange(0, w // tile_size) * tile_size

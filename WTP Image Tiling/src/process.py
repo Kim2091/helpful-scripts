@@ -6,7 +6,7 @@ import numpy as np
 from chainner_ext import resize, ResizeFilter
 
 from .tile_scripts import lin_tile, random_tile, overlap_tile, best_tile_list_index
-from pepeline import read, save, cvt_color, CvtType, best_tile
+from pepeline import read, save, cvt_color, CvtType, best_tile, ImgColor, ImgFormat
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map, thread_map
 from numpy.random import shuffle
@@ -110,7 +110,7 @@ class Tiler:
         Args:
             img_name (str): The image filename.
         """
-        img = read(join(self.in_folder, img_name), 1, 0)
+        img = read(join(self.in_folder, img_name), ImgColor.RGB, ImgFormat.F32)
         img_shape = img.shape
         result_name = self.__name(img_name,None)
         if img_shape[0] == self.tile_size or img_shape[1] == self.tile_size:
@@ -135,7 +135,7 @@ class Tiler:
             img_name (str): The image filename.
         """
         img_path = join(self.in_folder, img_name)
-        img = read(img_path, None, 1)
+        img = read(img_path, ImgColor.RGB, ImgFormat.U8)
         for tile_cord in self.img_dict[img_name]:
             out_name = self.__name(img_name, tile_cord)
             tile_img = self.__tile(img, tile_cord)
