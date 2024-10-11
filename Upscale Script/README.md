@@ -15,6 +15,7 @@ This script allows for quick upscaling of your images with support for [spandrel
 * pillow
 * numpy
 * tqdm
+* chainner-ext
 
 How to use: `python upscale-script.py --input /path/to/image/folder --output /path/to/output/folder --model /path/to/model/file`
 
