@@ -12,6 +12,7 @@ import gc
 import argparse
 import sys
 from tqdm import tqdm
+import chainner_ext
 
 # Install extra architectures
 spandrel_extra_arches.install()
@@ -24,6 +25,8 @@ TILE_SIZE = config['Processing'].get('TileSize', '512').lower()
 PRECISION = config['Processing'].get('Precision', 'auto').lower()
 THREAD_POOL_WORKERS = int(config['Processing'].get('ThreadPoolWorkers', 1))
 OUTPUT_FORMAT = config['Processing'].get('OutputFormat', 'png').lower()
+ALPHA_HANDLING = config['Processing'].get('AlphaHandling', 'resize').lower()
+GAMMA_CORRECTION = config['Processing'].getboolean('GammaCorrection', False)
 
 # Create a ThreadPoolExecutor for running CPU-bound tasks
 thread_pool = ThreadPoolExecutor(max_workers=THREAD_POOL_WORKERS)
@@ -31,34 +34,17 @@ thread_pool = ThreadPoolExecutor(max_workers=THREAD_POOL_WORKERS)
 # Supported image formats
 SUPPORTED_FORMATS = ('.png', '.jpg', '.jpeg', '.webp', '.tga', '.bmp', '.tiff')
 
-def load_model(model_path):
-    if not os.path.exists(model_path):
-        raise ValueError(f"Model file not found: {model_path}")
-    
-    try:
-        model = spandrel.ModelLoader().load_from_file(model_path)
-        if isinstance(model, spandrel.ImageModelDescriptor):
-            return model.cuda().eval()
-        else:
-            raise ValueError(f"Invalid model type for {model_path}")
-    except Exception as e:
-        print(f"Failed to load model {model_path}: {str(e)}")
-        raise
-
-def upscale_image(image, model, tile_size):
-    img_tensor = torch.from_numpy(np.array(image)).permute(2, 0, 1).float().div_(255.0).unsqueeze(0).cuda()
-
+def upscale_tensor(img_tensor, model, tile_size):
     _, _, h, w = img_tensor.shape
     output_h, output_w = h * model.scale, w * model.scale
 
     output_dtype = torch.float32 if PRECISION == 'fp32' else torch.float16
-    output_tensor = torch.zeros((1, 3, output_h, output_w), dtype=output_dtype, device='cuda')
+    output_tensor = torch.zeros((1, img_tensor.shape[1], output_h, output_w), dtype=output_dtype, device='cuda')
 
     if tile_size == "native":
         tile_size = max(h, w)
 
     tile_size = int(tile_size)
-    total_tiles = ((h - 1) // tile_size + 1) * ((w - 1) // tile_size + 1)
 
     for y in range(0, h, tile_size):
         for x in range(0, w, tile_size):
@@ -77,23 +63,77 @@ def upscale_image(image, model, tile_size):
             output_tensor[:, :, y*model.scale:min((y+tile_size)*model.scale, output_h),
                           x*model.scale:min((x+tile_size)*model.scale, output_w)].copy_(upscaled_tile)
 
-    output_image = Image.fromarray((output_tensor[0].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
+    return output_tensor
 
-    return output_image
+def load_model(model_path):
+    if not os.path.exists(model_path):
+        raise ValueError(f"Model file not found: {model_path}")
+    
+    try:
+        model = spandrel.ModelLoader().load_from_file(model_path)
+        if isinstance(model, spandrel.ImageModelDescriptor):
+            return model.cuda().eval()
+        else:
+            raise ValueError(f"Invalid model type for {model_path}")
+    except Exception as e:
+        print(f"Failed to load model {model_path}: {str(e)}")
+        raise
 
+def upscale_image(image, model, tile_size, alpha_handling, gamma_correction):
+    has_alpha = image.mode == 'RGBA'
+    if has_alpha:
+        rgb_image, alpha = image.convert('RGB'), image.split()[3]
+    else:
+        rgb_image = image
+
+    # Upscale RGB
+    rgb_tensor = torch.from_numpy(np.array(rgb_image)).permute(2, 0, 1).float().div_(255.0).unsqueeze(0).cuda()
+    upscaled_rgb_tensor = upscale_tensor(rgb_tensor, model, tile_size)
+    upscaled_rgb = Image.fromarray((upscaled_rgb_tensor[0].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
+
+    if has_alpha:
+        if alpha_handling == 'upscale':
+            # Create a 3-channel tensor from the alpha channel
+            alpha_array = np.array(alpha)
+            alpha_3channel = np.stack([alpha_array, alpha_array, alpha_array], axis=2)
+            alpha_tensor = torch.from_numpy(alpha_3channel).permute(2, 0, 1).float().div_(255.0).unsqueeze(0).cuda()
+            
+            # Upscale the 3-channel alpha tensor
+            upscaled_alpha_tensor = upscale_tensor(alpha_tensor, model, tile_size)
+            
+            # Extract a single channel from the result
+            upscaled_alpha = Image.fromarray((upscaled_alpha_tensor[0, 0].cpu().numpy() * 255).astype(np.uint8))
+        elif alpha_handling == 'resize':
+            # Resize alpha using chainner_ext.resize with CubicMitchell filter
+            alpha_np = np.array(alpha, dtype=np.float32) / 255.0  # Normalize to [0, 1]
+            alpha_np = alpha_np.reshape(alpha_np.shape[0], alpha_np.shape[1], 1)  # Add channel dimension
+            upscaled_alpha_np = chainner_ext.resize(
+                alpha_np,
+                (upscaled_rgb.width, upscaled_rgb.height),
+                chainner_ext.ResizeFilter.CubicMitchell,
+                gamma_correction=gamma_correction
+            )
+            # Convert back to 0-255 range and clip values
+            upscaled_alpha_np = np.clip(upscaled_alpha_np * 255, 0, 255)
+            upscaled_alpha = Image.fromarray(upscaled_alpha_np.squeeze().astype(np.uint8))
+        elif alpha_handling == 'discard':
+            # Discard alpha
+            return upscaled_rgb
+        
+        # Merge upscaled RGB and alpha
+        upscaled_rgba = upscaled_rgb.copy()
+        upscaled_rgba.putalpha(upscaled_alpha)
+        return upscaled_rgba
+    else:
+        return upscaled_rgb
+                
 def process_image(input_path, output_path, model):
     try:
-        image = Image.open(input_path).convert('RGB')
-
-        # Calculate the output image size
-        input_width, input_height = image.size
-        scale = model.scale
-        output_width = input_width * scale
-        output_height = input_height * scale
+        image = Image.open(input_path)
 
         start_time = time.time()
 
-        result = upscale_image(image, model, TILE_SIZE)
+        result = upscale_image(image, model, TILE_SIZE, ALPHA_HANDLING, GAMMA_CORRECTION)
 
         upscale_time = time.time() - start_time
 
