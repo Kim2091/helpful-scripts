@@ -1,6 +1,6 @@
 # Image Upscaling Script
 
-This script allows for quick upscaling of your images with support for [spandrel](https://github.com/chaiNNer-org/spandrel). Just provide an input and output folder.
+This script allows for quick upscaling of your images with support for [spandrel](https://github.com/chaiNNer-org/spandrel). Just provide an input & output folder and the model you want to use.
 
 **Features:**
 * Upscale images using AI models
