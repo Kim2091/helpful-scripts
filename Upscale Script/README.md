@@ -28,6 +28,8 @@ How to use: `python upscale-script.py --input /path/to/image/folder --output /pa
 * `Precision` - Set computation precision ("auto", "fp32", "fp16", or "bf16")
 * `ThreadPoolWorkers` - Number of worker threads for CPU tasks
 * `OutputFormat` - Output image format (e.g., "png", "jpg", "webp")
+* `AlphaHandling` - Whether to resize, upscale, or discard the alpha channel
+* `GammaCorrection` - Whether or not to gamma correct the resized alpha channel
 
 **Notes:**
 * Experiment with different `TileSize` values to find the optimal setting for your hardware
