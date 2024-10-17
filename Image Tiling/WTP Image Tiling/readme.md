@@ -1,3 +1,5 @@
+This is an alternative version of the main image tiling script, thanks to umzi for submitting it. You may like it more :)
+
 ## Config:
 ```json 
 {
