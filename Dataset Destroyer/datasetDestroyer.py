@@ -1,13 +1,12 @@
 import configparser
 import os
 import cv2
-import time
 import numpy as np
 import ffmpeg
 from random import random, randint, choice, shuffle, uniform
 import concurrent.futures
 from tqdm import tqdm
-from PIL import Image, ImageFilter
+from PIL import Image
 from chainner_ext import DiffusionAlgorithm, UniformQuantization, error_diffusion_dither, resize, ResizeFilter
 
 # Logging
@@ -76,14 +75,41 @@ chroma_likelihood = config.getfloat('likelihood', 'chroma', fallback=0.3)
 
 def print_text_to_image(image, text, order):
     h, w = image.shape[:2]
-    font_scale = w / 1200
-    font_thickness = int(font_scale * 2)
-    text_size, _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)
-    text_width, text_height = text_size
+    # More robust font scaling
+    font_scale = min(w, h) / 1000  # Normalized scaling
+    font_thickness = max(1, int(font_scale * 2))
+    
+    # Break long text into multiple lines
+    max_line_length = 40  # Adjust this value as needed
+    lines = []
+    while len(text) > max_line_length:
+        # Find the last space before max_line_length
+        split_index = text[:max_line_length].rfind(' ')
+        if split_index == -1:
+            split_index = max_line_length
+        lines.append(text[:split_index])
+        text = text[split_index:].strip()
+    lines.append(text)
+    
+    # Use red in BGR color space
+    color = (0, 0, 255)  # Red in BGR
+    
+    # Calculate text size to adjust vertical positioning
+    text_sizes = [cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)[0] for line in lines]
+    text_heights = [size[1] for size in text_sizes]
+    
     x = 10
-    y = int(order * text_height * 1.5) + 10
-    return cv2.putText(image, f"{order}. {text}", (x, y), cv2.FONT_HERSHEY_SIMPLEX, font_scale,
-                       (255, 0, 0), font_thickness, cv2.LINE_AA)
+    y = int(order * text_heights[0] * 1.5) + 10
+    
+    # Draw each line of text
+    for i, line in enumerate(lines):
+        current_y = y + i * int(text_heights[0] * 1.5)
+        cv2.putText(image, f"{order}. {line}" if i == 0 else line, 
+                    (x, current_y), 
+                    cv2.FONT_HERSHEY_SIMPLEX, font_scale,
+                    color, font_thickness, cv2.LINE_AA)
+    
+    return image
 
 # Append given text as a new line at the end of file (if file not exists it creates and inserts line, otherwise it just appends newline)               
 def print_text_to_textfile(file_name, text_to_append):
@@ -356,20 +382,28 @@ def apply_compression(image):
         height, width, _ = image.shape
         codec = algorithm
         container = 'mpeg'
+        input_args = {}
+        
         if algorithm == 'mpeg':
             codec = 'mpeg1video'
+            # Add required parameters for MPEG-1
+            input_args = {'framerate': '25'}  # MPEG-1 needs a framerate
+            output_args = {
+                'qscale:v': str(randint(*mpeg_qscale_range)),
+                'g': '1',  # One keyframe per frame
+                'bf': '0'  # No B-frames
+            }
 
         elif algorithm == 'mpeg2':
             codec = 'mpeg2video'
+            input_args = {'framerate': '25'}
+            output_args = {
+                'qscale:v': str(randint(*mpeg2_qscale_range)),
+                'g': '1',
+                'bf': '0'
+            }
 
-        elif algorithm == 'vp9':
-            codec = 'libvpx-vp9'
-            container = 'webm'
-            crf_level = randint(*vp9_crf_level_range)
-            output_args = {'crf': str(crf_level), 'b:v': '0', 'cpu-used': '5'}
-    
-        # Get CRF level or bitrate from config
-        if algorithm == 'h264':
+        elif algorithm == 'h264':
             crf_level = randint(*h264_crf_level_range)
             output_args = {'crf': crf_level}
 
@@ -377,63 +411,72 @@ def apply_compression(image):
             crf_level = randint(*hevc_crf_level_range)
             output_args = {'crf': crf_level, 'x265-params': 'log-level=0'}
 
-        elif algorithm == 'mpeg':
-            qscale_level = str(randint(*mpeg_qscale_range))
-            output_args = {'qscale:v': str(qscale_level), 'qmax': str(qscale_level), 'qmin': str(qscale_level)}
-
-        elif algorithm == 'mpeg2':
-            qscale_level = str(randint(*mpeg2_qscale_range))
-            output_args = {'qscale:v': str(qscale_level), 'qmax': str(qscale_level), 'qmin': str(qscale_level)}
-
         elif algorithm == 'vp9':
             codec = 'libvpx-vp9'
             container = 'webm'
             crf_level = randint(*vp9_crf_level_range)
             output_args = {'crf': str(crf_level), 'b:v': '0', 'cpu-used': '5'}
 
-        else:
-            raise ValueError(f"Unknown algorithm: {algorithm}")
-
-        # Encode image using ffmpeg
-        process1 = (
-            ffmpeg
-            .input('pipe:', format='rawvideo', pix_fmt='bgr24', s=f'{width}x{height}')
-            .output('pipe:', format=container, vcodec=codec, **output_args)
-            .global_args('-loglevel', 'fatal') # Disable error reporting because of buffer errors
-            .global_args('-max_muxing_queue_size', '300000')
-            .run_async(pipe_stdin=True, pipe_stdout=True)
-        )
-        process1.stdin.write(image.tobytes())
-        process1.stdin.flush()  # Ensure all data is written
-        process1.stdin.close()
-
-        # Add a delay between each image to help resolve buffer errors
-        time.sleep(0.1) 
+        process1 = None
+        process2 = None
         
-        # Decode compressed video back into image format using ffmpeg
-        process2 = (
-            ffmpeg
-            .input('pipe:', format=container)
-            .output('pipe:', format='rawvideo', pix_fmt='bgr24')
-            .global_args('-loglevel', 'fatal') # Disable error reporting because of buffer errors
-            .run_async(pipe_stdin=True, pipe_stdout=True)
-        )
-
-        out, err = process2.communicate(input=process1.stdout.read())
-
-        process1.wait()
-
         try:
-            # Hacky workaround found by the database. If you notice issues with image outputs, comment this out and replace it with the line underneath
-            image = np.frombuffer(out, np.uint8)[:(height * width * 3)].reshape(image.shape).copy()
-            # image = np.frombuffer(out, np.uint8).reshape([height, width, 3]).copy()
-            first_arg = list(output_args.items())[0]
-            text = f"{algorithm} {first_arg[0]}={first_arg[1]}"
-        except ValueError as e:
-            logging.error(f'Error reshaping output from ffmpeg: {e}')
-            logging.error(f'Image dimensions: {width}x{height}')
-            logging.error(f'ffmpeg stderr output: {err}')
-            raise e
+            # Encode and decode using ffmpeg
+            process1 = (
+                ffmpeg
+                .input('pipe:', format='rawvideo', pix_fmt='bgr24', s=f'{width}x{height}', **input_args)
+                .output('pipe:', format=container, vcodec=codec, **output_args)
+                .global_args('-loglevel', 'fatal')
+                .global_args('-max_muxing_queue_size', '300000')
+                .run_async(pipe_stdin=True, pipe_stdout=True)
+            )
+            
+            # Write input image
+            process1.stdin.write(image.tobytes())
+            process1.stdin.close()
+            
+            # Read compressed output
+            compressed_output = process1.stdout.read()
+            process1.wait(timeout=10)  # 10 second timeout
+            
+            if process1.returncode != 0:
+                raise RuntimeError(f"FFmpeg encoding failed with return code {process1.returncode}")
+                
+            process2 = (
+                ffmpeg
+                .input('pipe:', format=container)
+                .output('pipe:', format='rawvideo', pix_fmt='bgr24')
+                .global_args('-loglevel', 'fatal')
+                .run_async(pipe_stdin=True, pipe_stdout=True)
+            )
+            
+            # Write compressed data
+            process2.stdin.write(compressed_output)
+            process2.stdin.close()
+            
+            # Read all output data
+            out = process2.stdout.read()
+            process2.wait(timeout=10)
+            
+            if process2.returncode != 0:
+                raise RuntimeError(f"FFmpeg decoding failed with return code {process2.returncode}")
+            
+            # Take only the bytes we need and reshape
+            image = np.frombuffer(out, np.uint8)[:(height * width * 3)].reshape([height, width, 3]).copy()
+
+        except Exception as e:
+            logging.error(f"FFmpeg processing failed: {str(e)}")
+            # Clean up processes if they're still running
+            for p in [process1, process2]:
+                try:
+                    if p and p.poll() is None:
+                        p.kill()
+                except Exception:
+                    logging.exception("Error cleaning up processes")
+            raise
+
+        first_arg = list(output_args.items())[0]
+        text = f"{algorithm} {first_arg[0]}={first_arg[1]}"
 
     return image, text
 
@@ -468,8 +511,9 @@ def apply_scale(image):
         'gauss': ResizeFilter.Gauss
     }
 
-    # Disable gamma correction for nearest neighbor
-    gamma_correction = algorithm != 'nearest'
+    # Determine if gamma correction should be applied
+    # Skip gamma correction for nearest neighbor since it doesn't interpolate
+    use_gamma = algorithm != 'nearest'
 
     if algorithm == 'down_up':
         if scale_randomize:
@@ -479,14 +523,17 @@ def apply_scale(image):
             algorithm1 = down_up_scale_algorithms[0]
             algorithm2 = down_up_scale_algorithms[-1]
         scale_factor = np.random.uniform(*scale_range)
-        image = resize(image, (int(w * scale_factor), int(h * scale_factor)), interpolation_map[algorithm1], gamma_correction=True)
-        image = resize(image, (new_w, new_h), interpolation_map[algorithm2], gamma_correction=True)
+        # Apply gamma correction based on the algorithms used
+        use_gamma1 = algorithm1 != 'nearest'
+        use_gamma2 = algorithm2 != 'nearest'
+        image = resize(image, (int(w * scale_factor), int(h * scale_factor)), interpolation_map[algorithm1], gamma_correction=use_gamma1)
+        image = resize(image, (new_w, new_h), interpolation_map[algorithm2], gamma_correction=use_gamma2)
         if print_to_image:
             text = f"{algorithm} scale1factor={scale_factor:.2f} scale1algorithm={algorithm1} scale2factor={size_factor/scale_factor:.2f} scale2algorithm={algorithm2}"
         if print_to_textfile:
             text = f"{algorithm} scale1factor={scale_factor:.2f} scale1algorithm={algorithm1} scale2factor={size_factor/scale_factor:.2f} scale2algorithm={algorithm2}"
     else:
-        image = resize(image, (new_w, new_h), interpolation_map[algorithm], gamma_correction=True)
+        image = resize(image, (new_w, new_h), interpolation_map[algorithm], gamma_correction=use_gamma)
         if print_to_image:
             text = f"{algorithm} size factor={size_factor}"
         if print_to_textfile:
