@@ -7,33 +7,35 @@ This script converts images by applying their embedded ICC profiles and converti
 * Convert images to sRGB color space
 * Preserve transparency/alpha channels
 * Support for batch processing via folders
-* Convert multiple image formats (PNG, JPEG, TIFF, BMP)
+* Preserve directory structure in output
+* Convert multiple image formats (PNG, JPEG, TIFF, BMP, WebP)
 
 **Required Packages:**
 * pillow
 
-How to use: `python icc_to_srgb.py -i /path/to/input -o /path/to/output`
+How to use: `python icc_to_srgb.py input_folder output_folder`
 
 **Arguments:**
-* `-i, --input` - Path to an image file or directory containing images to process
-* `-o, --output` - Path where processed images will be saved (file or directory)
+* `input_folder` - Path to a directory containing images to process
+* `output_folder` - Directory where processed images will be saved
 
 **Supported Input Formats:**
 * PNG
 * JPEG/JPG
 * TIFF
 * BMP
+* WebP
 
 **Notes:**
 * All output images are saved as PNG to ensure alpha channel support
 * Images without ICC profiles are simply converted to RGB/RGBA
 * Original alpha channels are preserved during the conversion process
 * Directory structure is preserved when processing folders
+* Subdirectories are automatically created in the output folder
 
 **Examples:**
 
-Process a single image:
-`python icc_to_srgb.py -i input_image.png -o output_image.png`
-
-Process an entire folder:
-`python icc_to_srgb.py -i input_folder -o output_folder`
+Process a folder of images:
+```bash
+python icc_to_srgb.py input_folder output_folder
+```
