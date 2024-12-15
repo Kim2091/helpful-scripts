@@ -46,48 +46,33 @@ def process_image(input_path, output_path):
             final_image = rgb_converted
             
         # Save the converted image
-        if has_alpha:
-            final_image.save(output_path, 'PNG', icc_profile=None)
-        else:
-            final_image.save(output_path, 'PNG', icc_profile=None)
-            
+        final_image.save(output_path, 'PNG', icc_profile=None)
         print(f"Processed: {input_path} -> {output_path}")
         
     except Exception as e:
         print(f"Error processing {input_path}: {str(e)}")
 
-def process_directory(input_dir, output_dir):
+def process_folder(input_folder, output_folder):
     """Process all images in a directory."""
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Supported image extensions
-    supported_extensions = {'.png', '.jpg', '.jpeg', '.tiff', '.bmp'}
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
     
     # Process each file in input directory
-    for filename in os.listdir(input_dir):
-        # Check if file is an image
-        ext = os.path.splitext(filename)[1].lower()
-        if ext in supported_extensions:
-            input_path = os.path.join(input_dir, filename)
-            output_path = os.path.join(output_dir, os.path.splitext(filename)[0] + '.png')
-            process_image(input_path, output_path)
+    for root, dirs, files in os.walk(input_folder):
+        for file in files:
+            if file.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.webp')):
+                input_path = os.path.join(root, file)
+                relative_path = os.path.relpath(input_path, input_folder)
+                output_path = os.path.join(output_folder, os.path.splitext(relative_path)[0] + '.png')
+                
+                # Create necessary subdirectories in output folder
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                process_image(input_path, output_path)
 
-def main():
-    # Set up argument parser
-    parser = argparse.ArgumentParser(description='Apply embedded ICC profile and convert to sRGB')
-    parser.add_argument('-i', '--input', required=True, help='Input image or directory')
-    parser.add_argument('-o', '--output', required=True, help='Output image or directory')
-    
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Convert images with ICC profiles to sRGB.')
+    parser.add_argument('input_folder', type=str, help='Input folder containing images')
+    parser.add_argument('output_folder', type=str, help='Output folder to save converted images')
     args = parser.parse_args()
-    
-    # Check if input is a directory or single file
-    if os.path.isdir(args.input):
-        process_directory(args.input, args.output)
-    else:
-        # Create output directory if it doesn't exist
-        os.makedirs(os.path.dirname(args.output) if os.path.dirname(args.output) else '.', exist_ok=True)
-        process_image(args.input, args.output)
 
-if __name__ == "__main__":
-    main()
+    process_folder(args.input_folder, args.output_folder)
