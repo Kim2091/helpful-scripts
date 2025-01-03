@@ -1,6 +1,6 @@
 # Directory Tree Maker
 
-This script generates a visual representation of a directory structure, enhanced with emojis to represent different file types. It's designed to make browsing folder contents easier and more visually intuitive.
+This script generates a visual representation of a directory, using emojis to represent different file types. It's designed to make trees that are easier to read 🙂.
 
 ## Features
 - Generate a pretty tree structure for any directory.
