@@ -69,10 +69,21 @@ def process_folder(input_folder, output_folder):
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
                 process_image(input_path, output_path)
 
+def process_input(input_path, output_path):
+    """Process a single image or a folder of images."""
+    if os.path.isfile(input_path):
+        # Process a single image
+        process_image(input_path, output_path)
+    elif os.path.isdir(input_path):
+        # Process a folder of images
+        process_folder(input_path, output_path)
+    else:
+        print(f"Invalid input: {input_path} is neither a file nor a directory.")
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert images with ICC profiles to sRGB.')
-    parser.add_argument('input_folder', type=str, help='Input folder containing images')
-    parser.add_argument('output_folder', type=str, help='Output folder to save converted images')
+    parser.add_argument('input_path', type=str, help='Input file or folder containing images')
+    parser.add_argument('output_path', type=str, help='Output file or folder to save converted images')
     args = parser.parse_args()
 
-    process_folder(args.input_folder, args.output_folder)
+    process_input(args.input_path, args.output_path)
