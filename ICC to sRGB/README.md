@@ -16,8 +16,9 @@ This script converts images by applying their embedded ICC profiles and converti
 How to use: `python icc_to_srgb.py input_folder output_folder`
 
 **Arguments:**
-* `input_folder` - Path to a directory containing images to process
-* `output_folder` - Directory where processed images will be saved
+### Arguments:
+* `input_path` - Path to a single image file or a directory containing images to process.
+* `output_path` - Path to the output file (if processing a single image) or directory where processed images will be saved (if processing a folder).
 
 **Supported Input Formats:**
 * PNG
@@ -38,4 +39,8 @@ How to use: `python icc_to_srgb.py input_folder output_folder`
 Process a folder of images:
 ```bash
 python icc_to_srgb.py input_folder output_folder
+```
+Process a single image:
+```bash
+python icc_to_srgb.py input_image.jpg output_image.png
 ```
