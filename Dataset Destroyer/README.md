@@ -3,7 +3,6 @@
 __You may want to consider using [wtp_dataset_destroyer](https://github.com/umzi2/wtp_dataset_destroyer) instead. It builds on the concepts used in this original version and makes it a lot easier to use.__
 
 
-*Written with the help of multiple AI assistants*
 This script's main purpose is to generate datasets for your image models. 
 
 Note: Avoid running all degradations at once in combination with ffmpeg options (mpeg, mpeg2, h264, hevc, vp9). It will likely cause errors
