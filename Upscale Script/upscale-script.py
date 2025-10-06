@@ -10,7 +10,6 @@ import time
 import traceback
 import gc
 import argparse
-import sys
 from tqdm import tqdm
 import chainner_ext
 

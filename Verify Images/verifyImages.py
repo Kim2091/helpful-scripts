@@ -7,9 +7,10 @@ from tqdm import tqdm
 IMAGE_TYPES = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.tiff', '.webp']
 
 def is_image_file(filename, file_type=None):
+    filename_lower = filename.lower()
     if file_type:
-        return filename.endswith(file_type)
-    return any(filename.endswith(image_type) for image_type in IMAGE_TYPES)
+        return filename_lower.endswith(file_type.lower())
+    return any(filename_lower.endswith(image_type) for image_type in IMAGE_TYPES)
 
 def check_image(file_path, in_depth):
     try:
@@ -19,25 +20,27 @@ def check_image(file_path, in_depth):
             else:
                 img.verify()
         return True
-    except (IOError, SyntaxError):
+    except Exception:
         return False
 
 def search_for_corrupted_files(input_folder, file_type=None, in_depth=False):
     searched_files = []
     corrupted_files = []
 
-    # Get the total number of files to be searched for the progress bar
-    total_files = sum([len(files) for r, d, files in os.walk(input_folder)])
+    # First pass: count only image files for accurate progress bar
+    image_files = []
+    for dirpath, dirnames, filenames in os.walk(input_folder):
+        for filename in filenames:
+            if is_image_file(filename, file_type):
+                image_files.append(os.path.join(dirpath, filename))
 
-    with tqdm(total=total_files, desc="Processing files", bar_format="{l_bar}{bar} [ time left: {remaining} ]") as pbar:
-        for dirpath, dirnames, filenames in os.walk(input_folder):
-            for filename in filenames:
-                if is_image_file(filename, file_type):
-                    file_path = os.path.join(dirpath, filename)
-                    if not check_image(file_path, in_depth):
-                        corrupted_files.append(file_path)
-                    searched_files.append(file_path)
-                    pbar.update()  # update progress bar
+    # Second pass: check images with accurate progress bar
+    with tqdm(total=len(image_files), desc="Processing images", bar_format="{l_bar}{bar} [ time left: {remaining} ]") as pbar:
+        for file_path in image_files:
+            if not check_image(file_path, in_depth):
+                corrupted_files.append(file_path)
+            searched_files.append(file_path)
+            pbar.update()
 
     return searched_files, corrupted_files
 
@@ -57,5 +60,32 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--deep', action='store_true', help='Perform an in-depth scan.')
     args = parser.parse_args()
 
+    # Validate input folder
+    if not os.path.exists(args.input_folder):
+        print(f"Error: Input folder '{args.input_folder}' does not exist.")
+        exit(1)
+    
+    if not os.path.isdir(args.input_folder):
+        print(f"Error: '{args.input_folder}' is not a directory.")
+        exit(1)
+
+    print(f"Scanning directory: {args.input_folder}")
+    if args.file_type:
+        print(f"Filtering for file type: {args.file_type}")
+    if args.deep:
+        print("Performing deep scan...")
+    print()
+
     searched_files, corrupted_files = search_for_corrupted_files(args.input_folder, args.file_type, args.deep)
+    
+    # Print summary
+    print(f"\nScan complete!")
+    print(f"Total images scanned: {len(searched_files)}")
+    print(f"Corrupted images found: {len(corrupted_files)}")
+    
+    if corrupted_files:
+        print("\nCorrupted files:")
+        for file in corrupted_files:
+            print(f"  - {file}")
+    
     write_log(searched_files, corrupted_files)
