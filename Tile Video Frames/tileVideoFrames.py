@@ -176,8 +176,8 @@ def main():
                         help='Width of each tile in pixels (default: 512)')
     parser.add_argument('--tile-height', type=int, default=512, 
                         help='Height of each tile in pixels (default: 512)')
-    parser.add_argument('--seed', type=int, default=42, 
-                        help='Random seed for tile selection (default: 42)')
+    parser.add_argument('--seed', type=int, default=1024, 
+                        help='Random seed for tile selection (default: 1024)')
     parser.add_argument('--workers', type=int, default=None, 
                         help='Number of parallel workers (default: CPU count)')
     

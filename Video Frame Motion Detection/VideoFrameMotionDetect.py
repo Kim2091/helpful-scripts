@@ -107,10 +107,10 @@ def analyze_sequence_motion(input_dir, sequence_name, frames, min_motion=0.5, ma
 def main():
     parser = argparse.ArgumentParser(description='Detect motion issues in video frame sequences')
     parser.add_argument('input_dir', help='Directory containing frame sequences')
-    parser.add_argument('--min-motion', type=float, default=0.5, 
-                        help='Minimum motion threshold percentage (default: 0.5, use "none" to disable)')
+    parser.add_argument('--min-motion', type=float, default=-1, 
+                        help='Minimum motion threshold percentage (default: -1, use -1 to disable)')
     parser.add_argument('--max-motion', type=float, default=15.0,
-                        help='Maximum motion threshold percentage (default: 15.0, use "none" to disable)')
+                        help='Maximum motion threshold percentage (default: 15.0, use -1 to disable)')
     parser.add_argument('--move-to', type=str, default=None,
                         help='Optional directory to move frames with motion issues')
     
