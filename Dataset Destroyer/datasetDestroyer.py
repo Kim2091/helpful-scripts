@@ -552,26 +552,23 @@ def process_image(image_path):
 
     degradation_order = []
     all_text = []
-
+    for degradation in degradations:
+        if degradation == 'blur' and random() < blur_likelihood:
+            degradation_order.append('blur')
+        elif degradation == 'noise' and random() < noise_likelihood:
+            degradation_order.append('noise')
+        elif degradation == 'chroma' and random() < chroma_likelihood:
+            degradation_order.append('chroma')
+        elif degradation == 'compression' and random() < compression_likelihood:
+            degradation_order.append('compression')
+        elif degradation == 'scale' and random() < scale_likelihood:
+            degradation_order.append('scale')
+        elif degradation == 'quantization' and random() < quantization_likelihood:
+            degradation_order.append('quantization')
+        elif degradation == 'unsharp_mask' and random() < unsharp_mask_likelihood:
+            degradation_order.append('unsharp_mask')
     if degradations_randomize:
-        for degradation in degradations:
-            if degradation == 'blur' and random() < blur_likelihood:
-                degradation_order.append('blur')
-            elif degradation == 'noise' and random() < noise_likelihood:
-                degradation_order.append('noise')
-            elif degradation == 'chroma' and random() < chroma_likelihood:
-                degradation_order.append('chroma')
-            elif degradation == 'compression' and random() < compression_likelihood:
-                degradation_order.append('compression')
-            elif degradation == 'scale' and random() < scale_likelihood:
-                degradation_order.append('scale')
-            elif degradation == 'quantization' and random() < quantization_likelihood:
-                degradation_order.append('quantization')
-            elif degradation == 'unsharp_mask' and random() < unsharp_mask_likelihood:
-                degradation_order.append('unsharp_mask')
         shuffle(degradation_order)
-    else:
-        degradation_order = degradations.copy()
 
     for order, degradation in enumerate(degradation_order, 1):
         if degradation == 'blur':
